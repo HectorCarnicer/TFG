@@ -1,0 +1,41 @@
+{
+  "_descripcion": "Datos de datasheet del panel solar de 65W / 12V nominal (36 celdas en serie). Editar estos valores para modelar otro panel.",
+  "_unidades": {
+    "v_mp": "V", "i_mp": "A", "v_oc": "V", "i_sc": "A",
+    "alpha_sc_pct": "%/°C (coef. temp. Isc, tal como aparece en datasheet)",
+    "beta_voc_pct": "%/°C (coef. temp. Voc, tal como aparece en datasheet)",
+    "gamma_pmp": "%/°C (coef. temp. Pmax)",
+    "temp_ref": "°C"
+  },
+
+  "celltype": "multiSi",
+  "v_mp": 17.6,
+  "i_mp": 3.69,
+  "v_oc": 21.7,
+  "i_sc": 3.99,
+
+  "alpha_sc_pct": 0.105,
+  "beta_voc_pct": -0.360,
+  "gamma_pmp": -0.45,
+
+  "cells_in_series": 36,
+  "temp_ref": 25,
+
+  "n_substrings": 3,
+  "v_bypass": -0.5,
+
+  "datasheet_referencia": {
+    "p_max_stc_W": 65.0,
+    "v_mp_stc_V": 17.6,
+    "i_mp_stc_A": 3.69,
+    "v_oc_stc_V": 21.7,
+    "i_sc_stc_A": 3.99,
+    "p_max_noct_W": 46.8,
+    "v_mp_noct_V": 15.7,
+    "i_mp_noct_A": 2.95,
+    "v_oc_noct_V": 19.7,
+    "i_sc_noct_A": 3.23,
+    "noct_C": 47,
+    "irradiancia_noct_Wm2": 800
+  }
+}

@@ -1,0 +1,58 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/28.2.5 Chrome/138.0.7204.251 Electron/37.6.1 Safari/537.36" version="28.2.5">
+  <diagram name="Página-1" id="NfQmQnUam9UlT4jdGC1m">
+    <mxGraphModel dx="1181" dy="686" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="00CBTH1ridcXZyBNTSEL-1" value="Simulación de panel" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1ba1e2;fontColor=#ffffff;strokeColor=#006EAF;" vertex="1" parent="1">
+          <mxGeometry x="110" y="135" width="290" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="00CBTH1ridcXZyBNTSEL-2" value="Entrenamiento de red neuronal" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#60a917;fontColor=#ffffff;strokeColor=#2D7600;" vertex="1" parent="1">
+          <mxGeometry x="110" y="320" width="290" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="00CBTH1ridcXZyBNTSEL-3" value="Diseño de firmware de control del panel" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d80073;fontColor=#ffffff;strokeColor=#A50040;" vertex="1" parent="1">
+          <mxGeometry x="110" y="505" width="290" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="00CBTH1ridcXZyBNTSEL-6" value="&lt;ul&gt;&lt;li&gt;Simulación basada en PVlib&lt;/li&gt;&lt;li&gt;Distinta irradiancia por substring del panel basándose en datos de ciudad&lt;/li&gt;&lt;li&gt;Obtención de gráficas I-V y pre-cálculo de MPP. Guardado en formato JSON.&lt;span style=&quot;color: rgba(0, 0, 0, 0); font-family: monospace; font-size: 0px; text-wrap-mode: nowrap;&quot;&gt;%3CmxGraphModel%3E%3Croot%3E%3CmxCell%20id%3D%220%22%2F%3E%3CmxCell%20id%3D%221%22%20parent%3D%220%22%2F%3E%3CmxCell%20id%3D%222%22%20value%3D%22Simulaci%C3%B3n%20de%20panel%22%20style%3D%22rounded%3D1%3BwhiteSpace%3Dwrap%3Bhtml%3D1%3BfillColor%3D%2360a917%3BfontColor%3D%23ffffff%3BstrokeColor%3D%232D7600%3B%22%20vertex%3D%221%22%20parent%3D%221%22%3E%3CmxGeometry%20x%3D%22110%22%20y%3D%22140%22%20width%3D%22290%22%20height%3D%2250%22%20as%3D%22geometry%22%2F%3E%3C%2FmxCell%3E%3C%2Froot%3E%3C%2FmxGraphModel%3E&lt;/span&gt;&amp;nbsp;&lt;/li&gt;&lt;/ul&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=left;shadow=0;glass=0;fillColor=#1ba1e2;fontColor=#ffffff;strokeColor=#006EAF;" vertex="1" parent="1">
+          <mxGeometry x="480" y="80" width="290" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="00CBTH1ridcXZyBNTSEL-7" value="&lt;ul&gt;&lt;li&gt;Entrenamiento de red neuronal con:&lt;/li&gt;&lt;ul&gt;&lt;li&gt;Datos&amp;nbsp; de curva I-V&lt;/li&gt;&lt;li&gt;Datos de MPP&lt;/li&gt;&lt;/ul&gt;&lt;/ul&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#60a917;fontColor=#ffffff;strokeColor=#2D7600;align=left;" vertex="1" parent="1">
+          <mxGeometry x="480" y="265" width="290" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="00CBTH1ridcXZyBNTSEL-8" value="Prueba en físico y evaluación" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#647687;fontColor=#ffffff;strokeColor=#314354;" vertex="1" parent="1">
+          <mxGeometry x="110" y="695" width="290" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="00CBTH1ridcXZyBNTSEL-9" value="&lt;ul&gt;&lt;li&gt;Evaluación temporal del microcontrolador&lt;/li&gt;&lt;li&gt;Evaluación de exactitud&lt;/li&gt;&lt;li&gt;&lt;br&gt;&lt;/li&gt;&lt;/ul&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#647687;fontColor=#ffffff;strokeColor=#314354;align=left;" vertex="1" parent="1">
+          <mxGeometry x="480" y="640" width="290" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="00CBTH1ridcXZyBNTSEL-10" value="&lt;ul&gt;&lt;li&gt;Diseño de firmware específico para red neuronal en plataforma STM&lt;/li&gt;&lt;li&gt;&lt;br&gt;&lt;/li&gt;&lt;/ul&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d80073;fontColor=#ffffff;strokeColor=#A50040;align=left;" vertex="1" parent="1">
+          <mxGeometry x="480" y="450" width="290" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="00CBTH1ridcXZyBNTSEL-12" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="00CBTH1ridcXZyBNTSEL-1" target="00CBTH1ridcXZyBNTSEL-6">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="460" y="90" as="sourcePoint" />
+            <mxPoint x="510" y="40" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="00CBTH1ridcXZyBNTSEL-13" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="344.71" as="sourcePoint" />
+            <mxPoint x="480" y="344.71" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="00CBTH1ridcXZyBNTSEL-14" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="529.71" as="sourcePoint" />
+            <mxPoint x="480" y="529.71" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="00CBTH1ridcXZyBNTSEL-15" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="719.71" as="sourcePoint" />
+            <mxPoint x="480" y="719.71" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
