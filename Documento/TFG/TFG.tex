@@ -1,0 +1,120 @@
+% Plantilla realizada por Alberto Brunete (UPM).
+
+%Parametros de tipo libro
+\documentclass[10pt,a4paper]{book}
+
+%Idioma español y acentos
+\usepackage[spanish, es-tabla]{babel}
+%\usepackage[latin1]{inputenc}
+\usepackage[utf8]{inputenc}
+
+%algunos sÌmbolos matemáticos y paquetes para usar subimágenes
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{subfigure}
+\usepackage{listings}
+\usepackage{appendix}
+%Márgenes
+\usepackage[left=3cm,top=3cm,right=3cm,bottom=3cm]{geometry}
+
+%
+\usepackage{multicol}
+
+% para hacer figuras con más de una imagen
+\usepackage{subfigure}
+
+%para generar índice con hipervínculos
+\usepackage{hyperref}
+
+%parametros del documento (sus propiedades)
+\hypersetup{
+    pdftitle={Nombre del alumno - TFG - año},
+    pdfsubject={TFG - año},
+    pdfauthor={Nombre del alumno},
+    pdfkeywords={palabraclave1} {palabraclave2} {palabraclave3},
+    colorlinks,
+    citecolor=black,
+    filecolor=black,
+    linkcolor=black,
+    urlcolor=black,
+}
+
+%Código
+\usepackage{listings}
+%Rename Listlings
+\renewcommand{\lstlistingname}{Código}% Listing -> Algorithm
+\renewcommand{\lstlistlistingname}{Lista de \lstlistingname s}
+% List of Listings -> Lista de Código
+
+%empieza el documento
+\begin{document}  
+
+%elementos antes del trabajo en sÌ se meten dentro de frontmatter
+\frontmatter
+
+%cada incluye referencia a un archivo de tipo .tex
+\include{capitulos/portada}
+
+%\include{capitulos/firmas}
+
+%Licencia opcional
+\include{capitulos/licencia}
+
+%\include{capitulos/evaluacion}
+
+\include{capitulos/agradecimientos}
+
+\include{capitulos/resumen}
+
+%genera índice
+\tableofcontents
+\addcontentsline{toc}{chapter}{Índice}
+
+%Índice de figuras.
+\listoffigures
+
+%Índice de tablas.
+\listoftables
+
+%Empieza la parte descriptiva del trabajo
+\mainmatter
+
+\include{capitulos/introduccion}
+  
+% partes finales del trabajo: conclusiones, bibliografia y anexos
+
+\include{capitulos/estadoarte}
+
+\include{capitulos/marcoteorico}
+
+\include{capitulos/ejemplos}
+
+\include{capitulos/resultados}
+
+\include{capitulos/gestion}
+
+\include{capitulos/conclusion}
+
+\appendix
+
+\include{capitulos/apendice}
+
+\backmatter
+%Glosario, lista de símbolos, notas, etc.
+
+%estilo de bibliografía: plana, alfa...
+\bibliographystyle{plain}
+
+%genera doble hoja en blanco
+\cleardoublepage
+
+%apartado de bibliografía
+\addcontentsline{toc}{chapter}{Bibliografia}
+
+%se incluye la bibliografía. Archivo de tipo .bib (bibtex)
+\bibliography{bibliografia/bibliografia}
+
+%fin del documento
+\end{document}

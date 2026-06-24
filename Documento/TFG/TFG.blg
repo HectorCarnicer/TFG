@@ -1,0 +1,58 @@
+This is BibTeX, Version 0.99d (TeX Live 2025/Debian)
+Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
+The top-level auxiliary file: TFG.aux
+A level-1 auxiliary file: capitulos/portada.aux
+A level-1 auxiliary file: capitulos/licencia.aux
+A level-1 auxiliary file: capitulos/agradecimientos.aux
+A level-1 auxiliary file: capitulos/resumen.aux
+A level-1 auxiliary file: capitulos/introduccion.aux
+A level-1 auxiliary file: capitulos/estadoarte.aux
+A level-1 auxiliary file: capitulos/marcoteorico.aux
+A level-1 auxiliary file: capitulos/ejemplos.aux
+A level-1 auxiliary file: capitulos/resultados.aux
+A level-1 auxiliary file: capitulos/gestion.aux
+A level-1 auxiliary file: capitulos/conclusion.aux
+A level-1 auxiliary file: capitulos/apendice.aux
+The style file: plain.bst
+Database file #1: bibliografia/bibliografia.bib
+You've used 1 entry,
+            2118 wiz_defined-function locations,
+            517 strings with 4488 characters,
+and the built_in function-call counts, 392 in all, are:
+= -- 36
+> -- 18
+< -- 0
++ -- 7
+- -- 6
+* -- 34
+:= -- 71
+add.period$ -- 3
+call.type$ -- 1
+change.case$ -- 6
+chr.to.int$ -- 0
+cite$ -- 1
+duplicate$ -- 11
+empty$ -- 30
+format.name$ -- 6
+if$ -- 78
+int.to.chr$ -- 0
+int.to.str$ -- 1
+missing$ -- 1
+newline$ -- 8
+num.names$ -- 2
+pop$ -- 4
+preamble$ -- 1
+purify$ -- 5
+quote$ -- 0
+skip$ -- 7
+stack$ -- 0
+substring$ -- 32
+swap$ -- 1
+text.length$ -- 0
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 4
+warning$ -- 0
+while$ -- 3
+width$ -- 2
+write$ -- 13
