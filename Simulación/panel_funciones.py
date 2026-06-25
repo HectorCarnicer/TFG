@@ -12,6 +12,8 @@ Incluye:
     - Simulación de la curva IV del panel con irradiancia distinta por
       substring (sombreado parcial), incluyendo el efecto de los diodos
       de bypass.
+    - Cálculo del punto de máxima potencia (MPP) a partir de una curva
+      I-V genérica (calcular_mpp).
     - Generación de N simulaciones aleatorias de sombreado parcial.
 
 Este módulo NO ejecuta nada por sí mismo: solo define funciones para ser
@@ -293,6 +295,57 @@ def curva_iv_panel_sombreado(modulo, irradiancias_substrings, temp_celda,
     return v_total, i_array, p_total, resumen_sombra, v_substrings
 
 
+def calcular_mpp(v_array, i_array):
+    """
+    Dada una curva I-V (arrays de voltaje y corriente), calcula la curva
+    P(V) = V * I y devuelve el punto de máxima potencia (MPP).
+
+    Parameters
+    ----------
+    v_array : array-like
+        Valores de voltaje [V] de la curva.
+    i_array : array-like
+        Valores de corriente [A] de la curva, en el mismo orden que v_array.
+
+    Returns
+    -------
+    dict con las claves:
+        "Pmax [W]" : potencia máxima encontrada en la curva.
+        "Vmp [V]"  : voltaje en el punto de máxima potencia.
+        "Imp [A]"  : corriente en el punto de máxima potencia.
+        "idx"      : índice del punto de máxima potencia dentro de los
+                     arrays de entrada (útil si se necesita ubicarlo en
+                     la curva original).
+
+    Notas
+    -----
+    Esta función es deliberadamente genérica: no asume que la curva venga
+    de `curva_iv` ni de `curva_iv_panel_sombreado`, solo que v_array e
+    i_array tengan la misma longitud y estén alineados punto a punto.
+    El máximo se busca por búsqueda directa sobre P(V) (no se interpola
+    entre puntos), así que la precisión depende de la resolución de la
+    curva de entrada.
+    """
+    v_array = np.asarray(v_array, dtype=float)
+    i_array = np.asarray(i_array, dtype=float)
+
+    if v_array.shape != i_array.shape:
+        raise ValueError(
+            f"v_array e i_array deben tener la misma forma "
+            f"(recibido {v_array.shape} vs {i_array.shape})"
+        )
+
+    p_array = v_array * i_array
+    idx_mpp = int(np.argmax(p_array))
+
+    return {
+        "Pmax [W]": round(float(p_array[idx_mpp]), 2),
+        "Vmp [V]": round(float(v_array[idx_mpp]), 2),
+        "Imp [A]": round(float(i_array[idx_mpp]), 2),
+        "idx": idx_mpp,
+    }
+
+
 # ---------------------------------------------------------------------------
 # 5. GENERACIÓN MASIVA DE SIMULACIONES ALEATORIAS
 # ---------------------------------------------------------------------------
@@ -323,9 +376,10 @@ def generar_simulaciones_aleatorias(modulo, n_simulaciones, irr_min=150,
     -------
     list[dict]
         Una entrada por simulación, con las claves: id,
-        irradiancias_substrings_Wm2, temp_celda_C, resumen, curva
-        (curva["V"], curva["I"], curva["P"] como listas de Python, listas
-        para serializar a JSON).
+        irradiancias_substrings_Wm2, temp_celda_C, mpp, curva
+        (curva["V"], curva["I"], curva["P"] como listas de Python).
+        El campo "mpp" es el resultado de `calcular_mpp(V, I)`:
+        {"Pmax [W]", "Vmp [V]", "Imp [A]", "idx"}.
     """
     if semilla is not None:
         random.seed(semilla)
@@ -339,15 +393,19 @@ def generar_simulaciones_aleatorias(modulo, n_simulaciones, irr_min=150,
             for _ in range(n_substrings)
         ]
 
-        v_t, i_t, p_t, res, _ = curva_iv_panel_sombreado(
+        v_t, i_t, p_t, _, _ = curva_iv_panel_sombreado(
             modulo, irr_substrings, temp_celda, n_puntos=n_puntos
         )
+
+        # MPP calculado explícitamente sobre la curva I(V) ya generada,
+        # usando la función genérica calcular_mpp (V*I -> máximo de P(V)).
+        mpp = calcular_mpp(v_t, i_t)
 
         simulaciones.append({
             "id": n,
             "irradiancias_substrings_Wm2": irr_substrings,
             "temp_celda_C": temp_celda,
-            "resumen": res,
+            "mpp": mpp,
             "curva": {
                 "V": v_t.round(5).tolist(),
                 "I": i_t.round(5).tolist(),
