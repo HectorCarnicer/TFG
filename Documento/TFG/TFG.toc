@@ -38,7 +38,7 @@
 \contentsline {section}{\numberline {7.1}Conclusión}{13}{section.7.1}%
 \contentsline {section}{\numberline {7.2}Desarrollos futuros}{13}{section.7.2}%
 \contentsline {chapter}{\numberline {A}Anexo de código}{15}{appendix.Alph1}%
-\contentsline {section}{\numberline {A.1}Cñodigo de simulación de panel solar}{15}{section.Alph1.1}%
+\contentsline {section}{\numberline {A.1}Código de simulación de panel solar}{15}{section.Alph1.1}%
 \contentsline {section}{\numberline {A.2}Código de entrenamiento de red neuronal}{15}{section.Alph1.2}%
 \contentsline {section}{\numberline {A.3}Cósigo de implementación en microcontrolador}{15}{section.Alph1.3}%
 \contentsline {chapter}{\numberline {B}Anexo de ejemplos LaTeX}{17}{appendix.Alph2}%
