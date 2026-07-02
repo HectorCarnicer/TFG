@@ -1,17 +1,126 @@
-\chapter{Anexo ...}
+\chapter{Anexo de ejemplos LaTeX}
 
-En este apéndice...
+\section{Citas}
+
+%las referencias a artículos se ponen con \cite, 
+%las referencias a imágenes \ref, 
+%y las referencias a ecuaciones \eqref
+
+Esto es un ejemplo de cita de un artículo \cite{Brunete:2013}.
 
 
-\section{Lorem ipsum}
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas ornare erat nisl, a laoreet purus pellentesque id. Duis laoreet ipsum posuere est hendrerit, quis ornare nisi iaculis. Quisque imperdiet gravida egestas. Maecenas in mauris felis. Quisque quis imperdiet enim. Curabitur dignissim eget nisi lobortis placerat. Donec et magna rutrum, tempor magna a, consectetur tortor. Donec faucibus sodales sem, eu iaculis leo eleifend id. Nam semper lectus nisl, sed molestie erat pharetra quis. Quisque vestibulum metus elit, id interdum ligula dignissim a.
+\section{Simulaciones}
 
-Praesent eu velit ac lectus tristique tristique vitae et tellus. Mauris dignissim feugiat orci, vitae luctus dolor finibus ut. Ut congue bibendum lectus, vitae congue ligula. Donec commodo, lacus ac iaculis scelerisque, nunc purus finibus diam, at lacinia sem justo non quam. Aenean tempor urna vitae quam pretium porta. Sed in lacinia ipsum. Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos. Integer ut tristique est. Nam vitae interdum ligula, ac sodales dolor. Nulla mollis bibendum urna, sit amet interdum est aliquet at. Sed sagittis mi vel tellus posuere, eu rutrum arcu tristique.
+%itemize es una lista. Cada término lleva delante un \item
 
-Vestibulum aliquet orci pharetra justo auctor, pharetra viverra felis finibus. Ut ac gravida quam. Donec egestas turpis nisi, nec elementum orci feugiat at. In hac habitasse platea dictumst. Praesent mollis sem in felis feugiat, dapibus finibus metus scelerisque. Aliquam ultricies ante quis nibh laoreet, ac aliquam justo maximus. Etiam rhoncus pharetra imperdiet.
+La simulación del panel se realizó usando la librería PVlib de python. Esta librería permite al usuario simular paneles solares reales bajo condiciones específicas. Contiene una gran base de datos de módulos fotovoltaicos y datos meteorológicos.
 
-Nullam at libero quis augue tristique luctus eget placerat lorem. Donec pretium, dui scelerisque dapibus feugiat, ex lacus auctor ipsum, in ultricies odio justo in eros. Proin sodales velit non accumsan tempor. Mauris at consectetur est. Donec aliquam porttitor tortor, id malesuada nunc euismod vel. Ut id ullamcorper turpis, nec feugiat sapien. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi aliquam tempus tortor, et gravida lectus iaculis non. Interdum et malesuada fames ac ante ipsum primis in faucibus. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Integer non maximus felis. Nullam ac tempor augue. Vestibulum in efficitur mauris. Sed in nulla ultrices, pharetra ligula et, blandit nunc. Quisque dictum magna eget diam maximus, ac pulvinar nisi tempor. Pellentesque quis feugiat elit.
 
-Integer euismod in urna id placerat. Etiam urna elit, tempor et turpis venenatis, volutpat viverra lacus. In luctus arcu sit amet lectus rutrum, id ultricies mi pellentesque. Nulla bibendum, orci in elementum aliquam, mi purus sollicitudin orci, quis ornare nulla arcu placerat urna. Integer consequat, risus ac elementum pellentesque, nulla est lobortis justo, sed mattis nibh ligula nec velit. Integer sem mauris, luctus vitae venenatis a, tincidunt egestas purus. In et lectus semper, dapibus massa sed, ultrices nisi. Ut sit amet dolor porta, accumsan lectus ut, semper tellus. Praesent velit odio, facilisis quis sodales vel, molestie at risus. In sollicitudin mauris risus, ullamcorper ullamcorper ligula commodo sed. Ut libero tortor, rhoncus ut sagittis quis, fringilla nec nunc. Ut efficitur nisi id leo feugiat ultrices. Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos. Sed at malesuada arcu.
 
-Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Sed consectetur, justo nec scelerisque accumsan, leo erat dictum odio, id feugiat nibh felis vel ipsum. Duis urna ante, commodo vitae neque varius, congue egestas turpis. Donec condimentum ullamcorper dapibus. Nulla sed sapien eu diam commodo finibus. Nulla fringilla lectus vitae augue rutrum volutpat. Nulla in accumsan orci. Suspendisse eget diam massa.
+Ejemplo de lista de puntos:
+\begin{itemize}
+\item Ejemplo1.
+\item Ejemplo2.
+\end{itemize} 
+
+Y lista numerada:
+\begin{enumerate}
+\item Elemento 1
+\item Elemento 2
+\end{enumerate}
+
+\section{Tablas}
+
+Ejemplo de tabla. No se te olvide mencionar qué hay en la tabla \ref{tab:table_example}, por qué es interesante y en qué debería fijarse el lector. Hacer tablas en \LaTeX puede ser un dolor de cabeza, por ello existen páginas web que te permiten hacer el trabajo de forma más visual y luego te generan el código \LaTeX  que introduces en el documento, una maravilla. Aquí tienes un ejemplo: \href{https://www.tablesgenerator.com/}{https://www.tablesgenerator.com/}.
+
+\begin{table}[tb]
+    \caption{Ejemplo de tabla}
+    \label{tab:table_example}
+    \begin{center}
+        \begin{tabular}{|c||c|c|}
+        \hline
+        One & Two & Three\\
+        \hline
+        \hline
+        F1A & F1B & F1C\\
+        F2A & F2B & F2C\\
+        \hline
+        \end{tabular}
+    \end{center}
+\end{table}
+
+\section{Referencia a una sección}
+\label{sec:refsec}
+
+Ejemplo de referencia a la sección \ref{sec:refsec}.
+
+\section{Texto}
+
+Texto en \textbf{negrita} y \textit{cursiva}.
+
+Números decimales se escriben con coma: 2,5.
+
+\section{Figuras}
+
+Es importante que todas las figuras que aparezcan estén referenciadas, así como las tablas. Ejemplo de referencia a figura (figura \ref{fig:logo_upm}).
+
+En general las figuras se colocarán al principio o al final de cada página ([tb] en latex), a no ser que por alguna necesidad se deban colocar en una posición exacta ([h]). 
+
+\begin{figure}[tb]
+\centering
+\includegraphics[width=0.45\textwidth]{figuras/Logo_UPM.jpg}   
+\caption{Logotipo de la UPM.}
+\label{fig:logo_upm}
+\end{figure}
+
+Insertar imágenes es una de las cosas más raras que se hace en \LaTeX, si tienes dudas de cómo hacerlo puedes visitar esta página web con instrucciones: %\href{https://es.overleaf.com/learn/latex/Inserting_Images}{https://es.overleaf.com/learn/latex/Inserting_Images}. 
+
+Habrá casos en los que quieras poner 2 imágenes, una a la izquierda y otra a la derecha. Puedes hacerlo como en el ejemplo de la figura \ref{fig:doble_imagen}.
+%caption es el pie de foto, y label es el nombre que se da a la imagen para referenciarla después. label no puede llevar acentos y no se muestra de cara al documento final (es sólo interno).
+
+\begin{figure}[h]
+    \centering
+    \subfigure[UPM]{
+        \includegraphics[width=0.48\textwidth]{figuras/Logo_UPM.jpg}
+        \label{fig:logo_UPM2}
+    }
+    \subfigure[ETSIDI]{
+        \includegraphics[width=0.48\textwidth]{figuras/Logo_color_ETSIDI.jpg}
+        \label{fig:logo_ETSIDI}
+    }
+    \caption{Ejemplo de figura con dos imágenes.}
+    \label{fig:doble_imagen}
+\end{figure}
+
+\textbf{Muy importante!: Todas las figuras no originales que aparezcan en la memoria deben ir referenciadas.}
+
+
+\section{Código software}
+
+Existen muchas formas de escribir código en el TFG. Aquí se muestra una de ellas. En general es interesante numerar las líneas para que sean referenciables y destacar palabras clave del lenguaje correspondiente. Ver código \ref{code:prog1}.
+
+% Esto para configurar como se va a visualizar el código
+\lstset{numbers=left,numberstyle=\tiny, language=C, breaklines=true, basicstyle=\footnotesize, xleftmargin=25pt, framesep=8pt, numbersep=15pt}
+
+
+\begin{lstlisting}[frame=leftline, caption={Hola Mundo}, label=code:prog1]
+#include <iostream> 
+
+using namespace std;
+
+int main(int argc, char *argv[]) {
+  cout << ``Hola mundo'' << endl;
+  return 0;
+}
+\end{lstlisting}
+
+
+En general no se debe incluir mucho código en la memoria. El código debe ir en el Anexo. 
+
+\section{Pie de página}
+
+Esto es un pie de página \footnote{Pie de página}. Y para usar direcciones web y no tener problemas con caracteres especiales (como el ``\_''), se usa el comando url \footnote{\url{https://es.wikipedia.org/wiki/Estado_del_arte}}
+
+
+
+nsectetur, justo nec scelerisque accumsan, leo erat dictum odio, id feugiat nibh felis vel ipsum. Duis urna ante, commodo vitae neque varius, congue egestas turpis. Donec condimentum ullamcorper dapibus. Nulla sed sapien eu diam commodo finibus. Nulla fringilla lectus vitae augue rutrum volutpat. Nulla in accumsan orci. Suspendisse eget diam massa.

@@ -1,10 +1,10 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025/Debian) (preloaded format=pdflatex 2026.6.24)  24 JUN 2026 23:28
+This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025/Debian) (preloaded format=pdflatex 2026.6.24)  2 JUL 2026 19:10
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
  %&-line parsing enabled.
-**"/home/hectorc/Escritorio/Trabajo de Fin de Grado/TFG/Documento/TFG/TFG.tex"
-(/home/hectorc/Escritorio/Trabajo de Fin de Grado/TFG/Documento/TFG/TFG.tex
+**/home/hectorc/Escritorio/TFG/TFG_rep/Documento/TFG/TFG.tex
+(/home/hectorc/Escritorio/TFG/TFG_rep/Documento/TFG/TFG.tex
 LaTeX2e <2025-11-01>
 L3 programming layer <2026-01-19>
 (/usr/share/texlive/texmf-dist/tex/latex/base/book.cls
@@ -400,7 +400,7 @@ LaTeX Info: Redefining \. on input line 12.
 LaTeX Info: Redefining \% on input line 12.
 Package babel Info: 'spanish' activates 'spanish' shorthands.
 (babel)             Reported on input line 12.
- (./capitulos/licencia.aux) (./capitulos/agradecimientos.aux) (./capitulos/resumen.aux) (./capitulos/introduccion.aux) (./capitulos/estadoarte.aux) (./capitulos/marcoteorico.aux) (./capitulos/ejemplos.aux) (./capitulos/resultados.aux) (./capitulos/gestion.aux) (./capitulos/conclusion.aux) (./capitulos/apendice.aux))
+ (./capitulos/licencia.aux) (./capitulos/agradecimientos.aux) (./capitulos/resumen.aux) (./capitulos/introduccion.aux) (./capitulos/estadoarte.aux) (./capitulos/marcoteorico.aux) (./capitulos/metodologia.aux) (./capitulos/resultados.aux) (./capitulos/gestion.aux) (./capitulos/conclusion.aux) (./capitulos/codigo.aux) (./capitulos/apendice.aux))
 \openout1 = `TFG.aux'.
 
 LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 52.
@@ -493,7 +493,7 @@ Package hyperref Info: Link coloring ON on input line 52.
 \openout2 = `capitulos/portada.aux'.
 
  (./capitulos/portada.tex
-<figuras/cabecera.png, id=163, 1130.2225pt x 357.335pt>
+<figuras/cabecera.png, id=204, 1130.2225pt x 357.335pt>
 File: figuras/cabecera.png Graphic file (type png)
 <use figuras/cabecera.png>
 Package pdftex.def Info: figuras/cabecera.png  used on input line 6.
@@ -643,9 +643,9 @@ LaTeX Info: Redefining \% on input line 1.
 ]
 Cap\'{\i }tulo 3.
 ) [5]
-\openout2 = `capitulos/ejemplos.aux'.
+\openout2 = `capitulos/metodologia.aux'.
 
- (./capitulos/ejemplos.tex
+ (./capitulos/metodologia.tex
 LaTeX Info: Redefining \. on input line 1.
 LaTeX Info: Redefining \% on input line 1.
  [6
@@ -655,52 +655,23 @@ LaTeX Info: Redefining \% on input line 1.
 
 ]
 Cap\'{\i }tulo 4.
-[7]
-<figuras/Logo_UPM.jpg, id=339, 59.0205pt x 48.18pt>
-File: figuras/Logo_UPM.jpg Graphic file (type jpg)
-<use figuras/Logo_UPM.jpg>
-Package pdftex.def Info: figuras/Logo_UPM.jpg  used on input line 75.
-(pdftex.def)             Requested size: 192.0548pt x 156.79184pt.
-File: figuras/Logo_UPM.jpg Graphic file (type jpg)
-<use figuras/Logo_UPM.jpg>
-Package pdftex.def Info: figuras/Logo_UPM.jpg  used on input line 90.
-(pdftex.def)             Requested size: 204.85802pt x 167.2437pt.
-<figuras/Logo_color_ETSIDI.jpg, id=341, 1303.87125pt x 608.2725pt>
-File: figuras/Logo_color_ETSIDI.jpg Graphic file (type jpg)
-<use figuras/Logo_color_ETSIDI.jpg>
-Package pdftex.def Info: figuras/Logo_color_ETSIDI.jpg  used on input line 94.
-(pdftex.def)             Requested size: 204.85802pt x 95.5621pt.
-
-
-LaTeX Warning: `h' float specifier changed to `ht'.
-
-(/usr/share/texlive/texmf-dist/tex/latex/listings/lstlang1.sty
-File: lstlang1.sty 2025/11/14 1.11b listings language file
-) (/usr/share/texlive/texmf-dist/tex/latex/listings/lstmisc.sty
-File: lstmisc.sty 2025/11/14 1.11b (Carsten Heinz)
-)
-Package hyperref Info: bookmark level for unknown lstlisting defaults to 0 on input line 110.
-LaTeX Font Info:    Trying to load font information for OML+cmr on input line 111.
- (/usr/share/texlive/texmf-dist/tex/latex/base/omlcmr.fd
-File: omlcmr.fd 2024/11/19 v2.5n Standard LaTeX font definitions
-)
-LaTeX Font Info:    Font shape `OML/cmr/m/n' in size <8> not available
-(Font)              Font shape `OML/cmm/m/it' tried instead on input line 111.
-LaTeX Font Info:    Trying to load font information for OMS+cmr on input line 115.
- (/usr/share/texlive/texmf-dist/tex/latex/base/omscmr.fd
-File: omscmr.fd 2024/11/19 v2.5n Standard LaTeX font definitions
-)
-LaTeX Font Info:    Font shape `OMS/cmr/m/n' in size <8> not available
-(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 115.
-LaTeX Info: Redefining \. on input line 122.
-LaTeX Info: Redefining \% on input line 122.
- [8 <./figuras/Logo_UPM.jpg>])
-LaTeX Info: Redefining \. on input line 92.
-LaTeX Info: Redefining \% on input line 92.
- [9 <./figuras/Logo_color_ETSIDI.jpg>]
+) [7]
 \openout2 = `capitulos/resultados.aux'.
 
  (./capitulos/resultados.tex
+LaTeX Info: Redefining \. on input line 1.
+LaTeX Info: Redefining \% on input line 1.
+ [8
+
+
+
+
+]
+Cap\'{\i }tulo 5.
+) [9]
+\openout2 = `capitulos/gestion.aux'.
+
+ (./capitulos/gestion.tex
 LaTeX Info: Redefining \. on input line 1.
 LaTeX Info: Redefining \% on input line 1.
  [10
@@ -709,11 +680,11 @@ LaTeX Info: Redefining \% on input line 1.
 
 
 ]
-Cap\'{\i }tulo 5.
+Cap\'{\i }tulo 6.
 ) [11]
-\openout2 = `capitulos/gestion.aux'.
+\openout2 = `capitulos/conclusion.aux'.
 
- (./capitulos/gestion.tex
+ (./capitulos/conclusion.tex
 LaTeX Info: Redefining \. on input line 1.
 LaTeX Info: Redefining \% on input line 1.
  [12
@@ -722,11 +693,11 @@ LaTeX Info: Redefining \% on input line 1.
 
 
 ]
-Cap\'{\i }tulo 6.
+Cap\'{\i }tulo 7.
 ) [13]
-\openout2 = `capitulos/conclusion.aux'.
+\openout2 = `capitulos/codigo.aux'.
 
- (./capitulos/conclusion.tex
+ (./capitulos/codigo.tex
 LaTeX Info: Redefining \. on input line 1.
 LaTeX Info: Redefining \% on input line 1.
  [14
@@ -735,7 +706,7 @@ LaTeX Info: Redefining \% on input line 1.
 
 
 ]
-Cap\'{\i }tulo 7.
+Ap\'{e}ndice A.
 ) [15]
 \openout2 = `capitulos/apendice.aux'.
 
@@ -748,20 +719,59 @@ LaTeX Info: Redefining \% on input line 1.
 
 
 ]
-Ap\'{e}ndice A.
-) [17]
-LaTeX Info: Redefining \. on input line 102.
-LaTeX Info: Redefining \% on input line 102.
- [18] (./TFG.bbl) [19
+Ap\'{e}ndice B.
+[17]
+<figuras/Logo_UPM.jpg, id=426, 59.0205pt x 48.18pt>
+File: figuras/Logo_UPM.jpg Graphic file (type jpg)
+<use figuras/Logo_UPM.jpg>
+Package pdftex.def Info: figuras/Logo_UPM.jpg  used on input line 71.
+(pdftex.def)             Requested size: 192.0548pt x 156.79184pt.
+File: figuras/Logo_UPM.jpg Graphic file (type jpg)
+<use figuras/Logo_UPM.jpg>
+Package pdftex.def Info: figuras/Logo_UPM.jpg  used on input line 86.
+(pdftex.def)             Requested size: 204.85802pt x 167.2437pt.
+<figuras/Logo_color_ETSIDI.jpg, id=428, 1303.87125pt x 608.2725pt>
+File: figuras/Logo_color_ETSIDI.jpg Graphic file (type jpg)
+<use figuras/Logo_color_ETSIDI.jpg>
+Package pdftex.def Info: figuras/Logo_color_ETSIDI.jpg  used on input line 90.
+(pdftex.def)             Requested size: 204.85802pt x 95.5621pt.
+LaTeX Info: Redefining \. on input line 101.
+LaTeX Info: Redefining \% on input line 101.
+ [18 <./figuras/Logo_UPM.jpg> <./figuras/Logo_color_ETSIDI.jpg>] (/usr/share/texlive/texmf-dist/tex/latex/listings/lstlang1.sty
+File: lstlang1.sty 2025/11/14 1.11b listings language file
+) (/usr/share/texlive/texmf-dist/tex/latex/listings/lstmisc.sty
+File: lstmisc.sty 2025/11/14 1.11b (Carsten Heinz)
+)
+Package hyperref Info: bookmark level for unknown lstlisting defaults to 0 on input line 106.
+LaTeX Font Info:    Trying to load font information for OML+cmr on input line 107.
+ (/usr/share/texlive/texmf-dist/tex/latex/base/omlcmr.fd
+File: omlcmr.fd 2024/11/19 v2.5n Standard LaTeX font definitions
+)
+LaTeX Font Info:    Font shape `OML/cmr/m/n' in size <8> not available
+(Font)              Font shape `OML/cmm/m/it' tried instead on input line 107.
+LaTeX Font Info:    Trying to load font information for OMS+cmr on input line 111.
+ (/usr/share/texlive/texmf-dist/tex/latex/base/omscmr.fd
+File: omscmr.fd 2024/11/19 v2.5n Standard LaTeX font definitions
+)
+LaTeX Font Info:    Font shape `OMS/cmr/m/n' in size <8> not available
+(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 111.
+)
+LaTeX Info: Redefining \. on input line 104.
+LaTeX Info: Redefining \% on input line 104.
+ [19]
+LaTeX Info: Redefining \. on input line 107.
+LaTeX Info: Redefining \% on input line 107.
+ [20
 
 
 
+] (./TFG.bbl) [21
 
 
 ] (./TFG.aux (./capitulos/portada.aux)
 LaTeX Info: Redefining \. on input line 12.
 LaTeX Info: Redefining \% on input line 12.
- (./capitulos/licencia.aux) (./capitulos/agradecimientos.aux) (./capitulos/resumen.aux) (./capitulos/introduccion.aux) (./capitulos/estadoarte.aux) (./capitulos/marcoteorico.aux) (./capitulos/ejemplos.aux) (./capitulos/resultados.aux) (./capitulos/gestion.aux) (./capitulos/conclusion.aux) (./capitulos/apendice.aux))
+ (./capitulos/licencia.aux) (./capitulos/agradecimientos.aux) (./capitulos/resumen.aux) (./capitulos/introduccion.aux) (./capitulos/estadoarte.aux) (./capitulos/marcoteorico.aux) (./capitulos/metodologia.aux) (./capitulos/resultados.aux) (./capitulos/gestion.aux) (./capitulos/conclusion.aux) (./capitulos/codigo.aux) (./capitulos/apendice.aux))
  ***********
 LaTeX2e <2025-11-01>
 L3 programming layer <2026-01-19>
@@ -771,21 +781,21 @@ L3 programming layer <2026-01-19>
 LaTeX Font Warning: Some font shapes were not available, defaults substituted.
 
 Package rerunfilecheck Info: File `TFG.out' has not changed.
-(rerunfilecheck)             Checksum: 970C2683EE1688FD8C119DA8BC58AA21;5038.
+(rerunfilecheck)             Checksum: 8334CDDDFB26F9C85485E65077595E4B;7402.
  ) 
 Here is how much of TeX's memory you used:
- 14439 strings out of 467533
- 223928 string characters out of 5422138
- 861179 words of memory out of 5000000
- 42974 multiletter control sequences out of 15000+600000
+ 14484 strings out of 467533
+ 225092 string characters out of 5422138
+ 856103 words of memory out of 5000000
+ 43001 multiletter control sequences out of 15000+600000
  638963 words of font info for 81 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 75i,8n,79p,1072b,1430s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 75i,8n,79p,583b,1430s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx7.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx8.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmcsc10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr17.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr5.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr6.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsl10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmti10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmti12.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt8.pfb></usr/share/texmf/fonts/type1/public/cm-super/sfrm0800.pfb></usr/share/texmf/fonts/type1/public/cm-super/sfrm1000.pfb>
-Output written on TFG.pdf (35 pages, 1267570 bytes).
+Output written on TFG.pdf (37 pages, 1262278 bytes).
 PDF statistics:
- 525 PDF objects out of 1000 (max. 8388607)
- 439 compressed objects within 5 object streams
- 100 named destinations out of 1000 (max. 500000)
- 336 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 586 PDF objects out of 1000 (max. 8388607)
+ 498 compressed objects within 5 object streams
+ 111 named destinations out of 1000 (max. 500000)
+ 416 words of extra memory for PDF output out of 10000 (max. 10000000)
 

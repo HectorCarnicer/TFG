@@ -8,16 +8,17 @@ A level-1 auxiliary file: capitulos/resumen.aux
 A level-1 auxiliary file: capitulos/introduccion.aux
 A level-1 auxiliary file: capitulos/estadoarte.aux
 A level-1 auxiliary file: capitulos/marcoteorico.aux
-A level-1 auxiliary file: capitulos/ejemplos.aux
+A level-1 auxiliary file: capitulos/metodologia.aux
 A level-1 auxiliary file: capitulos/resultados.aux
 A level-1 auxiliary file: capitulos/gestion.aux
 A level-1 auxiliary file: capitulos/conclusion.aux
+A level-1 auxiliary file: capitulos/codigo.aux
 A level-1 auxiliary file: capitulos/apendice.aux
 The style file: plain.bst
 Database file #1: bibliografia/bibliografia.bib
 You've used 1 entry,
             2118 wiz_defined-function locations,
-            517 strings with 4488 characters,
+            518 strings with 4511 characters,
 and the built_in function-call counts, 392 in all, are:
 = -- 36
 > -- 18
