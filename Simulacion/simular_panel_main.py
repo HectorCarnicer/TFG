@@ -17,8 +17,8 @@ Flujo:
        cada curva
 
 Archivos relacionados:
-    panel_datos.json     -> datos del datasheet (editable sin tocar código)
-    panel_funciones.py   -> funciones de lectura y simulación (reutilizable)
+    panel_datos.json    -> datos del datasheet (editable sin tocar código)
+    panel_funciones.py  -> funciones de lectura y simulación (reutilizable)
 """
 
 import os
