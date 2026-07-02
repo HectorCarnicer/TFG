@@ -1,0 +1,71 @@
+## Core LaTeX auxiliary files
+*.aux
+*.lof
+*.log
+*.lot
+*.fls
+*.out
+*.toc
+*.fmt
+*.fot
+*.cb
+*.cb2
+*.lb
+
+## Bibliography
+*.bbl
+*.bcf
+*.blg
+*-blx.aux
+*-blx.bib
+*.run.xml
+
+## Build tool directories
+*.fdb_latexmk
+*.synctex.gz
+*.synctex.gz(busy)
+*.pdfsync
+
+## Índices
+*.idx
+*.ilg
+*.ind
+*.ist
+*.glg
+*.glo
+*.gls
+*.glsdefs
+*.lzo
+*.lzs
+*.slg
+*.slo
+*.sls
+*.acn
+*.acr
+*.alg
+
+## Listas y algoritmos
+*.loa
+*.lol
+
+## Beamer
+*.nav
+*.pre
+*.snm
+*.vrb
+
+## Otros
+*.xdy
+*.tdo
+*.dvi
+*.ps
+*.thm
+
+## Editores
+*.swp
+*~
+.vscode/
+*.tex.backup
+
+## Salida (opcional: descomenta si no quieres versionar el PDF final)
+# *.pdf
