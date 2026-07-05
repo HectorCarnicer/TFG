@@ -1,3 +1,79 @@
 \chapter{Marco Teórico}
 
-En este capítulo se describen (brevemente) todos los conceptos necesarios para entender el trabajo. No se trata de copiar el contenido de los libros de texto, si no de hacer un resumen de los conceptos necesarios para facilitar la lectura del documento al lector. Se entiende que el lector de un TFG tiene que tener unos conocimientos mínimos sobre el tema.
+
+
+\section{Modelo del panel solar}
+
+El modelo de un solo diodo equivalente de una célula de un panel solar con $n_S$ diodos en serie se puede 
+observar en el siguiente circuito \cite{ModeloPVDatasheet}: 
+
+% Circuito equivalente PV
+
+\begin{figure}[h]
+    \centering
+    \begin{circuitikz}[american, scale=1.2, every node/.style={scale=1}]
+
+        % Fuente de corriente Iph
+        \draw (0,0) to[isource, l_=$I_{ph}$] (0,4);
+
+        % Cable superior desde la fuente hasta el diodo
+        \draw (0,4) -- (2,4);
+
+        % Diodo D con corriente iD
+        \draw (2,4) to[D, l_=$D$, i=$i_D$] (2,0);
+
+        % Cable inferior desde el diodo hasta la fuente
+        \draw (2,0) -- (0,0);
+
+        % Cable superior desde el diodo hasta Rsh
+        \draw (2,4) -- (4,4);
+
+        % Resistencia Rsh con corriente iRsh
+        \draw (4,4) to[R, l_=$R_{SH}$, i=$i_{Rsh}$] (4,0);
+
+        % Cable inferior desde Rsh
+        \draw (4,0) -- (2,0);
+
+        % Resistencia serie Rs
+        \draw (4,4) to[R, l=$R_S$, i=$i$] (7,4);
+
+        % Terminal de salida superior (abierto, con flecha de corriente)
+        \draw (7,4) -- (8,4);
+
+        % Cable inferior hasta el terminal de salida
+        \draw (4,0) -- (8,0);
+
+        % Etiqueta de voltaje v en el terminal de salida
+        \draw (8,4) to[open, v=$v$] (8,0);
+
+    \end{circuitikz}
+    \caption{Modelo eléctrico equivalente de una celda solar con resistencia serie $R_S$ y resistencia shunt $R_{SH}$.}
+    \label{fig:modelo_celda_solar}
+\end{figure}
+
+Aplicando el análisis de circuitos se obtiene que la corriente de salida viene definida por tanto por:
+
+\begin{equation}
+i = I_{ph}(I_{rr}) - i_D - i_{R_{SH}} =I_{ph} -I_0(e^{\frac{v+i R_S}{n_S V_t}} - 1)- \frac{v+iR_S}{R_SH}
+\label{eq:ModeloDiodoUnico}
+\end{equation}
+
+Donde: 
+\begin{itemize}
+    \item $V_t$ es la tensión térmica de la unión p-n, definida por:
+    \begin{equation}
+    V_t=\frac{AkT_{STC}}{q}
+    \label{eq:TensionTermica}
+    \end{equation}
+    \item $I_{ph}(I)$ es la fotocorriente determinada en condiciones estándar (STC) con una irradiancia $I_{rr}$.
+    \item $I_0$ es la corriente de saturación oscura en condiciones etándar.
+    \item $R_S$ es la resistencia en serie de la célula.
+    \item $R_{SH}$ es la resistencia Shunt de la célula.
+    \item $A$ es el factor de idealidad del diodo.
+    \item $T_{STC}[K]$ es la temperatura en las condicones estándar.
+    \item $k$ es la constante de Boltzmann, $q$ es la carga del electrón y $n_S$ es el número de células en serie.
+\end{itemize}
+
+Nótese que $T_{STC}$, $k$, $q$ y $n_S$ son constantes ya determinadas, por lo que
+los únicos parámetros que necesarios para realizar un modelo del comportamiento de la célula solar son $I_{ph}$, $I_0$,
+$R_S$,  $R_{SH}$ y $A$.
