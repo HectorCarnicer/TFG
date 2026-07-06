@@ -1,0 +1,53 @@
+## Bytecode y caché
+__pycache__/
+*.py[cod]
+*$py.class
+
+## Distribución / empaquetado
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+wheels/
+share/python-wheels/
+MANIFEST
+
+## Entornos virtuales
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+## Gestores de dependencias
+Pipfile.lock
+poetry.lock
+uv.lock
+.pdm-python
+
+## Jupyter
+.ipynb_checkpoints/
+profile_default/
+ipython_config.py
+
+## Tests y cobertura
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+htmlcov/
+.pytest_cache/
+nosetests.xml
+coverage.xml
+*.cover
+
+## Type checkers / linters
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pytype/
+.ruff_cache/
+.pyre/
