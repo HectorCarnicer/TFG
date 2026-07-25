@@ -177,7 +177,17 @@ def curva_iv_panel_sombreado(modulo, irradiancias_substrings, temp_celda,
     # es la misma para todos los substrings en serie (excepto cuando el
     # bypass de alguno se activa), así que barremos corriente y resolvemos
     # voltaje, en vez de al revés.
-    i_max_ref = max(irradiancias_substrings) / 1000 * modulo["i_sc"] * 1.05
+    
+    #i_max_ref = max(irradiancias_substrings) / 1000 * modulo["i_sc"] * 1.05
+    
+    #Corriente máxima para la simulación
+    irr_max_idx = int(np.argmax(irradiancias_substrings))
+    _, _, _, _, _, isc_max = parametros_substring(
+        modulo, irradiancias_substrings[irr_max_idx], temp_celda
+    )
+    i_max_ref = isc_max * 1.05 # Factor de seguridad, además añade padding
+    
+    
     i_array = np.linspace(0, i_max_ref, n_puntos)
 
     v_substrings = np.zeros((n_substrings, n_puntos))
