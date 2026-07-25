@@ -1,8 +1,6 @@
-%este es el formato común de citar artículos. El formato Bibtex facilita el trabajo.
-
 % Ejemplo de cita
 
-@ARTICLE{Brunete:2013,
+@article{Brunete:2013,
   author = {A. Brunete and M. Hernando and E. Gambao},
   title = {Offline GA-based optimisation for heterogeneous modular multi-configurable
 	chained micro-robots},
@@ -15,9 +13,27 @@
   owner = {alberto}
 }
 
-% Modelos de panel solar
 
-@ARTCILE{ModeloPVDatasheet,
+% LIBRO DE REFERENCIA EN ELECTRÓNICA DE POTENCIA
+
+@incollection{Kouro:2014,
+  author    = {Kouro, Samir and Wu, Bin and Abu-Rub, Haitham and Blaabjerg, Frede},
+  title     = {Photovoltaic Energy Conversion Systems},
+  booktitle = {Power Electronics for Renewable Energy Systems, Transportation and Industrial Applications},
+  editor    = {Abu-Rub, Haitham and Malinowski, Mariusz and Al-Haddad, Kamal},
+  publisher = {John Wiley \& Sons, Ltd},
+  year      = {2014},
+  chapter   = {7},
+  pages     = {160--198},
+  doi       = {10.1002/9781118755525.ch7},
+  isbn      = {9781118634035}
+}
+
+
+
+% Modelos de panel solar: sacar parámetros de datasheet
+
+@inproceedings{Sera:2007,
   author={Sera, Dezso and Teodorescu, Remus and Rodriguez, Pedro},
   booktitle={2007 IEEE International Symposium on Industrial Electronics}, 
   title={PV panel model based on datasheet values}, 
@@ -26,9 +42,12 @@
   number={},
   pages={2392-2396},
   keywords={Equations;Equivalent circuits;Circuit testing;Photovoltaic systems;Solar power generation;Temperature dependence;Photovoltaic cells;Costs;Electric resistance;Parameter extraction},
-  doi={10.1109/ISIE.2007.4374981}}
+  doi={10.1109/ISIE.2007.4374981}
+}
 
-@article{ModeloBishop1988,
+% Modelo de Bishop para irradiancia no uniforme
+
+@article{Bishop:1988,
   title={Computer simulation of the effects of electrical mismatches in photovoltaic cell interconnection circuits},
   author={Bishop, JW},
   journal={Solar cells},
@@ -38,7 +57,6 @@
   year={1988},
   publisher={Elsevier}
 }
-
 
 
 
