@@ -34,7 +34,7 @@ from panel_funciones import (
     cargar_simulaciones,
 )
 
-# ---------------------------------------------------------------------------
+# ----------------------------------------------------------- ----------------
 # CONSTANTES DE CONFIGURACIÓN
 # ---------------------------------------------------------------------------
 RUTA_DATASHEET = "panel_datos.json"
@@ -51,13 +51,17 @@ ID_SIMULACION = "1"            # Identificador de esta tanda de simulaciones.
 
 MODO = "generar"  # "leer" | "generar"
 
+VISUAL = 1; # 
+
+
+
 # Parámetros usados únicamente cuando MODO == "generar"
 N_SIMULACIONES = 500
 IRR_MIN, IRR_MAX = 150, 1000    # Rango de irradiancia por substring [W/m2]
 TEMP_CELDA_SIM = 35              # Temperatura en °C, fija para las simulaciones aleatorias
 SEMILLA_ALEATORIA = 43753          # Para reproducibilidad; None = sin fijar
 
-RUTA_SIM = f"sim_{ID_SIMULACION}.dat"
+RUTA_SIM = f"datos_simulaciones/sim_{ID_SIMULACION}.dat"
 
 
 # ---------------------------------------------------------------------------
@@ -121,51 +125,55 @@ else:
 
 # Colores para la visualización
 
-COLOR_CURVAS = "#cfd8e3"      
-COLOR_MPP = "#ff1744"            
+if (VISUAL):
 
-fig, (ax_iv, ax_pv) = plt.subplots(1, 2, figsize=(13, 5.5))
+    print("\nVisualización activada, se mostrará el gráfico de las curvas I-V\n")    
 
-vmp_list, imp_list, pmax_list = [], [], []
-
-for sim in simulaciones:
-    v = np.array(sim["curva"]["V"])
-    i = np.array(sim["curva"]["I"])
-    p = np.array(sim["curva"]["P"])
-    mpp = sim["mpp"]
-
-    # Curvas de fondo
-    ax_iv.plot(v, i, color=COLOR_CURVAS, linewidth=1, zorder=1)
-    ax_pv.plot(v, p, color=COLOR_CURVAS, linewidth=1, zorder=1)
-
-    # MPP
-    ax_iv.scatter(mpp["Vmp [V]"], mpp["Imp [A]"], color=COLOR_MPP, s=18,
-                  zorder=3, alpha=0.85)
-    ax_pv.scatter(mpp["Vmp [V]"], mpp["Pmax [W]"], color=COLOR_MPP, s=18,
-                  zorder=3, alpha=0.85)
-
-    vmp_list.append(mpp["Vmp [V]"])
-    imp_list.append(mpp["Imp [A]"])
-    pmax_list.append(mpp["Pmax [W]"])
-
-
-# Curva I-V
-
-ax_iv.set_xlabel("Voltaje [V]")
-ax_iv.set_ylabel("Corriente [A]")
-ax_iv.set_title(f"Curvas I-V ({len(simulaciones)} simulaciones)")
-ax_iv.legend(loc="upper right", fontsize=8)
-ax_iv.grid(True, alpha=0.3)
-
-# Curva P-V
-
-ax_pv.set_xlabel("Voltaje [V]")
-ax_pv.set_ylabel("Potencia [W]")
-ax_pv.set_title(f"Curvas P-V ({len(simulaciones)} simulaciones)")
-ax_pv.legend(loc="upper right", fontsize=8)
-ax_pv.grid(True, alpha=0.3)
-
-plt.tight_layout()
-nombre_figura = f"curvas_sim_{ID_SIMULACION}.png"
-plt.savefig(nombre_figura, dpi=150)
-print(f"\nGráfico guardado como '{nombre_figura}'")
+    COLOR_CURVAS = "#cfd8e3"      
+    COLOR_MPP = "#ff1744"            
+    
+    fig, (ax_iv, ax_pv) = plt.subplots(1, 2, figsize=(13, 5.5))
+    
+    vmp_list, imp_list, pmax_list = [], [], []
+    
+    for sim in simulaciones:
+        v = np.array(sim["curva"]["V"])
+        i = np.array(sim["curva"]["I"])
+        p = np.array(sim["curva"]["P"])
+        mpp = sim["mpp"]
+    
+        # Curvas de fondo
+        ax_iv.plot(v, i, color=COLOR_CURVAS, linewidth=1, zorder=1)
+        ax_pv.plot(v, p, color=COLOR_CURVAS, linewidth=1, zorder=1)
+    
+        # MPP
+        ax_iv.scatter(mpp["Vmp [V]"], mpp["Imp [A]"], color=COLOR_MPP, s=18,
+                      zorder=3, alpha=0.85)
+        ax_pv.scatter(mpp["Vmp [V]"], mpp["Pmax [W]"], color=COLOR_MPP, s=18,
+                      zorder=3, alpha=0.85)
+    
+        vmp_list.append(mpp["Vmp [V]"])
+        imp_list.append(mpp["Imp [A]"])
+        pmax_list.append(mpp["Pmax [W]"])
+    
+    
+    # Curva I-V
+    
+    ax_iv.set_xlabel("Voltaje [V]")
+    ax_iv.set_ylabel("Corriente [A]")
+    ax_iv.set_title(f"Curvas I-V ({len(simulaciones)} simulaciones)")
+    ax_iv.legend(loc="upper right", fontsize=8)
+    ax_iv.grid(True, alpha=0.3)
+    
+    # Curva P-V
+    
+    ax_pv.set_xlabel("Voltaje [V]")
+    ax_pv.set_ylabel("Potencia [W]")
+    ax_pv.set_title(f"Curvas P-V ({len(simulaciones)} simulaciones)")
+    ax_pv.legend(loc="upper right", fontsize=8)
+    ax_pv.grid(True, alpha=0.3)
+    
+    plt.tight_layout()
+    nombre_figura = f"curvas_sim_{ID_SIMULACION}.png"
+    plt.savefig(nombre_figura, dpi=150)
+    print(f"\nGráfico guardado como '{nombre_figura}'")
