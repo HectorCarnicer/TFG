@@ -1,47 +1,45 @@
 """
 panel_funciones.py
-==================
 
 @author: Héctor Carnicer Ull
 
-Funciones de lectura y simulación para un modelo de panel solar con PVlib,
-usando el modelo de diodo único ajustado por el método CEC.
-
-Incluye:
-    - Lectura de los datos del panel desde un archivo JSON.
-    - Ajuste del modelo de diodo único (fit_cec_sam).
-    - Simulación de la curva IV del panel con irradiancia distinta por
-      substring (sombreado parcial), incluyendo el efecto de los diodos
-      de bypass.Cálculo del punto de máxima potencia (MPP).
-    - Generación de N simulaciones aleatorias de sombreado parcial.
+Funciones de lectura, ajuste de modelo, simulación y visualización de un
+panel solar bajo sombreado parcial (modelo de diodo único, ajuste CEC, PVlib).
 """
 
 import json
+import os
 import random
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 from pvlib.pvsystem import calcparams_cec
 from pvlib.ivtools.sdm import fit_cec_sam
 from pvlib.singlediode import bishop88_v_from_i, bishop88_i_from_v
 
 
-# ---------------------------------------------------------------------------
-# LECTURA DE DATOS DEL PANEL
-# ---------------------------------------------------------------------------
-def cargar_datasheet(ruta_json):
-    """
-    Parámetros:
-    ----------
-    ruta_json : str
-        Ruta al archivo JSON con los datos del panel (ver panel_datos.json).
+# Carpeta por defecto de salida de graficar_curvas_iv_pv.
+CARPETA_GRAFICOS = "Graficos"
 
-    Devuelve:
-    -------
-    dict con las claves: celltype, v_mp, i_mp, v_oc, i_sc, alpha_sc,
-    beta_voc, gamma_pmp, cells_in_series, temp_ref, n_substrings,
-    v_bypass, datasheet_referencia.
+
+# LECTURA DE DATOS DEL PANEL
+def cargar_datasheet(id_datos, carpeta_datos="datos_panel"):
+    """Carga la ficha de datos de un panel desde
+    carpeta_datos/datos_panel_<id_datos>.json.
+    Lanza FileNotFoundError si el fichero no existe. Devuelve un dict con
+    los datos del panel, con los coeficientes de temperatura ya
+    convertidos a A/°C y V/°C.
     """
+    ruta_json = os.path.join(carpeta_datos, f"datos_panel_{id_datos}.json")
+
+    if not os.path.exists(ruta_json):
+        raise FileNotFoundError(
+            f"No se encontró '{ruta_json}'. Comprueba que exista un fichero "
+            f"'datos_panel_{id_datos}.json' dentro de la carpeta "
+            f"'{carpeta_datos}/' (o ajusta ID_DATOS / CARPETA_DATOS)."
+        )
+
     with open(ruta_json, "r", encoding="utf-8") as f:
         datos = json.load(f)
 
@@ -64,24 +62,11 @@ def cargar_datasheet(ruta_json):
     return datasheet
 
 
-# ---------------------------------------------------------------------------
 # AJUSTE DEL MODELO DE DIODO ÚNICO (CEC)
-# ---------------------------------------------------------------------------
 def ajustar_modelo_cec(datasheet):
-    """
-    Ajusta los 5 parámetros del circuito equivalente de diodo único de PVlib
-    (I_L_ref, I_o_ref, R_s, R_sh_ref, a_ref) a partir de los datos
-    del datasheet, usando el método CEC (función fit_cec_sam de PVlib).
-
-    Parámetros:
-    ----------
-    datasheet : dict
-        Diccionario obtenido de `cargar_datasheet`.
-
-    Devuelve:
-    -------
-        El mismo `datasheet` extendido con los valores de: I_L_ref, I_o_ref,
-        R_s, R_sh_ref, a_ref, Adjust. 
+    """Ajusta el modelo de diodo único (CEC, vía fit_cec_sam) al datasheet
+    del panel. Devuelve el mismo datasheet extendido con los parámetros
+    ajustados (I_L_ref, I_o_ref, R_s, R_sh_ref, a_ref, Adjust).
     """
     I_L_ref, I_o_ref, R_s, R_sh_ref, a_ref, Adjust = fit_cec_sam(
         celltype=datasheet["celltype"],
@@ -107,19 +92,12 @@ def ajustar_modelo_cec(datasheet):
     }
     return modulo
 
-# ---------------------------------------------------------------------------
 # SIMULACIÓN CON SOMBREADO PARCIAL: irradiancia distinta por substring
-# ---------------------------------------------------------------------------
 def parametros_substring(modulo, irradiancia, temp_celda):
-    """
-    Calcula IL, I0, Rs, Rsh e Isc a para un substring del panel (con su fracción de
-    celdas correspondiente) a partir de los parámetros ya ajustados para
-    el panel completo. En PVlib hay que suar las funciones del modelo
-    de bishop88. En este caso i_from_v para la corriente de saturación.
-
-    a_ref escala linealmente con el número de celdas en serie.
-    La resistencia en serie y la resistencia Shunt escalan por la fracción de celdas.
-    IL e I0 no cambian con el número de celdas en serie.
+    """Calcula el circuito equivalente (IL, I0, Rs, Rsh, a) y la Isc de un
+    substring a la irradiancia [W/m2] y temp_celda [°C] dadas, a partir
+    del modelo ya ajustado del panel completo. Devuelve la tupla
+    (IL, I0, Rs, Rsh, a, isc_sub).
     """
     cells_per_substring = modulo["cells_in_series"] // modulo["n_substrings"]
     fraccion = cells_per_substring / modulo["cells_in_series"]
@@ -135,37 +113,22 @@ def parametros_substring(modulo, irradiancia, temp_celda):
         R_s=modulo["R_s"] * fraccion,
         Adjust=modulo["Adjust"],
     )
-    
+
     # Isc del substring: corriente cuando V=0.
-    
     isc_sub = float(bishop88_i_from_v(np.array([0.0]), IL, I0, Rs, Rsh, a)[0])
-    
+
     return IL, I0, Rs, Rsh, a, isc_sub
 
 
 def curva_iv_panel_sombreado(modulo, irradiancias_substrings, temp_celda,
                               v_bypass=None, n_puntos=500):
-    """
-    Combina los substrings en serie para obtener la curva IV del panel
-    completo bajo irradiancia no uniforme (sombreado parcial) usando el
-    modelo bishop para diodos bypass
-
-    Parámetros:
-    - irradiancias_substrings:
-        Irradiancia [W/m2] de cada uno de los `modulo["n_substrings"]`
-        substrings, p.ej. [1000, 600, 1000]
-    - v_bypass:
-        Voltaje negativo al que conduce el diodo de bypass de cada
-        substring. Si es None, se usa el valor definido en `modulo`
-        (cargado originalmente desde el JSON)
-
-    Devuelve:
-    - v_total, i_array, p_total : 
-        Curva IV combinada del panel completo
-    - MPP : 
-        {"Pmax [W]", "Vmp [V]", "Imp [A]"} en el punto de máxima potencia.
-    - substrings : 
-        Matriz (n_substrings x n_puntos) con el voltaje de cada substring.
+    """Calcula la curva IV del panel completo bajo irradiancia no uniforme
+    por substring (longitud modulo["n_substrings"]), combinando los
+    substrings en serie con sus diodos de bypass. v_bypass es la tensión
+    de conducción del diodo de bypass; si es None, se usa la de modulo.
+    Devuelve (v_total, i_array, p_total, MPP, v_substrings): la curva
+    combinada, el MPP (dict con Pmax, Vmp, Imp e índice) y la matriz de
+    tensiones por substring.
     """
     n_substrings = modulo["n_substrings"]
     if v_bypass is None:
@@ -173,21 +136,13 @@ def curva_iv_panel_sombreado(modulo, irradiancias_substrings, temp_celda,
 
     assert len(irradiancias_substrings) == n_substrings
 
-    # Rango de corriente común para "barrer" todas las curvas: la corriente
-    # es la misma para todos los substrings en serie (excepto cuando el
-    # bypass de alguno se activa), así que barremos corriente y resolvemos
-    # voltaje, en vez de al revés.
-    
-    #i_max_ref = max(irradiancias_substrings) / 1000 * modulo["i_sc"] * 1.05
-    
-    #Corriente máxima para la simulación
+    # Barrido en corriente (común a todos los substrings en serie).
     irr_max_idx = int(np.argmax(irradiancias_substrings))
     _, _, _, _, _, isc_max = parametros_substring(
         modulo, irradiancias_substrings[irr_max_idx], temp_celda
     )
-    i_max_ref = isc_max * 1.05 # Factor de seguridad, además añade padding
-    
-    
+    i_max_ref = isc_max * 1.05  # Margen de seguridad
+
     i_array = np.linspace(0, i_max_ref, n_puntos)
 
     v_substrings = np.zeros((n_substrings, n_puntos))
@@ -197,9 +152,7 @@ def curva_iv_panel_sombreado(modulo, irradiancias_substrings, temp_celda,
             modulo, irr, temp_celda
         )
 
-        # Máscara: puntos donde la corriente pedida SUPERA la Isc del
-        # substring -> ahí el bypass conduce, fijamos v_bypass directamente
-        # y nunca se llama al solver de diodo en esa zona.
+        # True donde el bypass conduce (corriente pedida > Isc del substring).
         activa_bypass = i_array > isc_sub
 
         v_sub = np.empty_like(i_array)
@@ -225,38 +178,16 @@ def curva_iv_panel_sombreado(modulo, irradiancias_substrings, temp_celda,
     return v_total, i_array, p_total, MPP, v_substrings
 
 
-# ---------------------------------------------------------------------------
 # GENERACIÓN DE SIMULACIONES ALEATORIAS
-# ---------------------------------------------------------------------------
 def generar_simulaciones_aleatorias(modulo, n_simulaciones, irr_min=150,
                                      irr_max=1000, temp_celda=35,
                                      semilla=None, n_puntos=500):
-    """
-    Genera N simulaciones de la curva IV del panel, donde cada substring
-    recibe una irradiancia aleatoria uniforme e independiente en el
-    rango [irr_min, irr_max] W/m².
-
-    Parámetros:
-    -modulo : 
-        Modelo del panel ya ajustado (ver `ajustar_modelo_cec`).
-    -n_simulaciones : 
-        Número de curvas a generar.
-    -irr_min, irr_max : 
-        Rango de la distribución uniforme de irradiancia por substring [W/m2].
-    -temp_celda : float
-        Temperatura de celda usada en todas las simulaciones [°C].
-    -semilla : 
-        Semilla para `random`, para reproducibilidad. None = sin fijar.
-    -n_puntos :
-        Número de puntos de la curva IV de cada simulación.
-
-    Devuelve:
-    list[dict]
-        Una entrada por simulación, con las claves: id,
-        irradiancias_substrings_Wm2, temp_celda_C, mpp, curva
-        (curva["V"], curva["I"], curva["P"] como listas de Python).
-        El campo MPP:
-        {"Pmax [W]", "Vmp [V]", "Imp [A]", "idx"}.
+    """Genera n_simulaciones curvas IV del panel, con irradiancia aleatoria
+    uniforme e independiente por substring en [irr_min, irr_max] W/m2 y
+    temp_celda fija para todas. semilla fija la reproducibilidad de
+    `random`; None no la fija. Devuelve una lista de dicts, uno por
+    simulación, con id, irradiancias_substrings_Wm2, temp_celda_C, mpp y
+    curva (V, I, P como listas de Python).
     """
     if semilla is not None:
         random.seed(semilla)
@@ -292,19 +223,10 @@ def generar_simulaciones_aleatorias(modulo, n_simulaciones, irr_min=150,
 def guardar_simulaciones(simulaciones, modulo, ruta_salida,
                           irr_min=150, irr_max=1000, temp_celda=35,
                           semilla=None):
-    """
-    Serializa una lista de simulaciones (generada por
-    `generar_simulaciones_aleatorias`) a un archivo JSON, junto con
-    metadatos del panel y de la generación.
-
-    Parameters
-    ----------
-    simulaciones : list[dict]
-        Salida de `generar_simulaciones_aleatorias`.
-    modulo : dict
-        Modelo del panel ya ajustado, usado para extraer metadatos.
-    ruta_salida : str
-        Ruta del archivo JSON a escribir (p.ej. "sim1.dat").
+    """Serializa simulaciones (salida de generar_simulaciones_aleatorias) a
+    JSON en ruta_salida, junto con metadatos del panel y de la generación
+    (rango de irradiancia, temperatura, semilla). Devuelve el dict
+    serializado (metadata + simulaciones).
     """
     salida = {
         "metadata": {
@@ -331,12 +253,66 @@ def guardar_simulaciones(simulaciones, modulo, ruta_salida,
 
 
 def cargar_simulaciones(ruta_archivo):
-    """
-    Recarga un archivo de simulaciones generado por `guardar_simulaciones`.
-
-    Returns
-    -------
-    dict con las claves "metadata" y "simulaciones".
+    """Carga un archivo de simulaciones generado por guardar_simulaciones.
+    Devuelve un dict con las claves "metadata" y "simulaciones".
     """
     with open(ruta_archivo, "r", encoding="utf-8") as f:
         return json.load(f)
+
+
+# VISUALIZACIÓN: curvas I-V y P-V con MPP
+def graficar_curvas_iv_pv(simulaciones, id_simulacion,
+                           carpeta_graficos=CARPETA_GRAFICOS,
+                           color_curvas="#cfd8e3", color_mpp="#ff1744",
+                           dpi=150):
+    """Genera la figura I-V / P-V (con MPP) de simulaciones y la guarda
+    como PNG en carpeta_graficos (se crea si no existe), con el nombre
+    curvas_sim_<id_simulacion>.png. Devuelve la ruta relativa del PNG
+    generado.
+    """
+    os.makedirs(carpeta_graficos, exist_ok=True)
+
+    fig, (ax_iv, ax_pv) = plt.subplots(1, 2, figsize=(13, 5.5))
+
+    vmp_list, imp_list, pmax_list = [], [], []
+
+    for sim in simulaciones:
+        v = np.array(sim["curva"]["V"])
+        i = np.array(sim["curva"]["I"])
+        p = np.array(sim["curva"]["P"])
+        mpp = sim["mpp"]
+
+        # Curvas de fondo
+        ax_iv.plot(v, i, color=color_curvas, linewidth=1, zorder=1)
+        ax_pv.plot(v, p, color=color_curvas, linewidth=1, zorder=1)
+
+        # MPP
+        ax_iv.scatter(mpp["Vmp [V]"], mpp["Imp [A]"], color=color_mpp, s=18,
+                      zorder=3, alpha=0.85)
+        ax_pv.scatter(mpp["Vmp [V]"], mpp["Pmax [W]"], color=color_mpp, s=18,
+                      zorder=3, alpha=0.85)
+
+        vmp_list.append(mpp["Vmp [V]"])
+        imp_list.append(mpp["Imp [A]"])
+        pmax_list.append(mpp["Pmax [W]"])
+
+    # Curva I-V
+    ax_iv.set_xlabel("Voltaje [V]")
+    ax_iv.set_ylabel("Corriente [A]")
+    ax_iv.set_title(f"Curvas I-V ({len(simulaciones)} simulaciones)")
+    ax_iv.legend(loc="upper right", fontsize=8)
+    ax_iv.grid(True, alpha=0.3)
+
+    # Curva P-V
+    ax_pv.set_xlabel("Voltaje [V]")
+    ax_pv.set_ylabel("Potencia [W]")
+    ax_pv.set_title(f"Curvas P-V ({len(simulaciones)} simulaciones)")
+    ax_pv.legend(loc="upper right", fontsize=8)
+    ax_pv.grid(True, alpha=0.3)
+
+    plt.tight_layout()
+    nombre_figura = f"curvas_sim_{id_simulacion}.png"
+    ruta_figura = os.path.join(carpeta_graficos, nombre_figura)
+    plt.savefig(ruta_figura, dpi=dpi)
+
+    return ruta_figura

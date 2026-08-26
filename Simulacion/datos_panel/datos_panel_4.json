@@ -1,0 +1,37 @@
+{
+  "_descripcion": "JinkoSolar Eagle JKM335M-72. Panel comercial monocristalino de 335W, 72 celdas de tamaño completo (6x12, no half-cut). Datos de datasheet oficial del fabricante.",
+  "_unidades": {
+    "v_mp": "V", "i_mp": "A", "v_oc": "V", "i_sc": "A",
+    "alpha_sc_pct": "%/°C (coef. temp. Isc, tal como aparece en datasheet)",
+    "beta_voc_pct": "%/°C (coef. temp. Voc, tal como aparece en datasheet)",
+    "gamma_pmp": "%/°C (coef. temp. Pmax)",
+    "temp_ref": "°C"
+  },
+
+  "celltype": "monoSi",
+  "v_mp": 38.4,
+  "i_mp": 8.72,
+  "v_oc": 46.9,
+  "i_sc": 9.18,
+
+  "alpha_sc_pct": 0.048,
+  "beta_voc_pct": -0.29,
+  "gamma_pmp": -0.40,
+
+  "cells_in_series": 72,
+  "temp_ref": 25,
+
+  "n_substrings": 3,
+  "v_bypass": -0.5,
+
+  "datasheet_referencia": {
+    "modelo": "JinkoSolar Eagle JKM335M-72",
+    "p_max_stc_W": 335.0,
+    "v_mp_stc_V": 38.4,
+    "i_mp_stc_A": 8.72,
+    "v_oc_stc_V": 46.9,
+    "i_sc_stc_A": 9.18,
+    "fuente": "https://rooftopsolarindia.com/datasheet/jinko-solar/datasheet-jinko-solar-mono-crystalline-72-cell-India.pdf",
+    "nota": "El número de diodos de bypass no se especifica explícitamente en el datasheet consultado; se ha asumido el estándar habitual de la industria para módulos de 72 celdas de tamaño completo (3 diodos, 24 celdas por substring)."
+  }
+}
