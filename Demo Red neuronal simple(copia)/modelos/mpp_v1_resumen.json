@@ -1,0 +1,66 @@
+{
+  "id_modelo": "mpp_v1",
+  "datos": {
+    "ruta": "sim_1.dat",
+    "n_curvas": 500,
+    "n_muestras": 237500,
+    "n_puntos_curva": null,
+    "modo_muestreo": "uniforme",
+    "metadata": {
+      "n_simulaciones": 500,
+      "n_substrings": 2,
+      "cells_per_substring": 18,
+      "rango_irradiancia_Wm2": [
+        150,
+        1000
+      ],
+      "temp_celda_C": 35,
+      "panel": {
+        "v_oc_stc": 21.7,
+        "i_sc_stc": 3.99,
+        "v_mp_stc": 17.6,
+        "i_mp_stc": 3.69
+      },
+      "semilla_aleatoria": 43753
+    }
+  },
+  "arquitectura": {
+    "n_entradas": 2,
+    "n_capas": 5,
+    "n_neuronas": 64,
+    "activacion": "sigmoid",
+    "optimizador": "nadam",
+    "learning_rate": 0.001,
+    "perdida": "mse"
+  },
+  "entrenamiento": {
+    "epocas_ejecutadas": 240,
+    "batch_size": 256,
+    "paciencia": 80,
+    "semilla": 42
+  },
+  "metricas": {
+    "punto": {
+      "MAE [V]": 2.3245321647376347,
+      "RMSE [V]": 3.2449280232156505,
+      "MAPE [%]": 20.184793304220687,
+      "Error max [V]": 9.307872772216797,
+      "R2": 0.29764742235457065
+    },
+    "curva": {
+      "MAE [V]": 2.078946588134766,
+      "RMSE [V]": 2.889708047602057,
+      "MAPE [%]": 19.850119975687523,
+      "Error max [V]": 5.977094993591309,
+      "R2": 0.4430028571639978
+    },
+    "tflite": {
+      "MAE [V]": 2.324532354602479,
+      "RMSE [V]": 3.244927903742321,
+      "MAPE [%]": 20.18479750548127,
+      "Error max [V]": 9.307865142822266,
+      "R2": 0.2976474740736835
+    }
+  },
+  "cuantizado": false
+}

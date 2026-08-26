@@ -1,0 +1,37 @@
+{
+  "_descripcion": "Canadian Solar CS6K-300MS. Panel comercial monocristalino de 300W, 60 celdas (6x10), 3 diodos de bypass. Datos de datasheet oficial del fabricante.",
+  "_unidades": {
+    "v_mp": "V", "i_mp": "A", "v_oc": "V", "i_sc": "A",
+    "alpha_sc_pct": "%/°C (coef. temp. Isc, tal como aparece en datasheet)",
+    "beta_voc_pct": "%/°C (coef. temp. Voc, tal como aparece en datasheet)",
+    "gamma_pmp": "%/°C (coef. temp. Pmax)",
+    "temp_ref": "°C"
+  },
+
+  "celltype": "monoSi",
+  "v_mp": 32.5,
+  "i_mp": 9.24,
+  "v_oc": 39.7,
+  "i_sc": 9.83,
+
+  "alpha_sc_pct": 0.05,
+  "beta_voc_pct": -0.29,
+  "gamma_pmp": -0.39,
+
+  "cells_in_series": 60,
+  "temp_ref": 25,
+
+  "n_substrings": 3,
+  "v_bypass": -0.5,
+
+  "datasheet_referencia": {
+    "modelo": "Canadian Solar CS6K-300MS",
+    "p_max_stc_W": 300.0,
+    "v_mp_stc_V": 32.5,
+    "i_mp_stc_A": 9.24,
+    "v_oc_stc_V": 39.7,
+    "i_sc_stc_A": 9.83,
+    "fuente": "https://www.invertersupply.com/media/data/Canadian_Solar-Datasheet-All-Black_CS6K-MS_en.pdf",
+    "nota": "Número de diodos de bypass (3) confirmado explícitamente en el datasheet."
+  }
+}

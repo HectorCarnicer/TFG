@@ -1,0 +1,37 @@
+{
+  "_descripcion": "Trina Solar TSM-260PC05A (serie TSM-PD05.08). Panel comercial policristalino de 260W, 60 celdas (6x10). Datos de datasheet oficial del fabricante.",
+  "_unidades": {
+    "v_mp": "V", "i_mp": "A", "v_oc": "V", "i_sc": "A",
+    "alpha_sc_pct": "%/°C (coef. temp. Isc, tal como aparece en datasheet)",
+    "beta_voc_pct": "%/°C (coef. temp. Voc, tal como aparece en datasheet)",
+    "gamma_pmp": "%/°C (coef. temp. Pmax)",
+    "temp_ref": "°C"
+  },
+
+  "celltype": "multiSi",
+  "v_mp": 30.6,
+  "i_mp": 8.50,
+  "v_oc": 38.2,
+  "i_sc": 9.00,
+
+  "alpha_sc_pct": 0.05,
+  "beta_voc_pct": -0.32,
+  "gamma_pmp": -0.41,
+
+  "cells_in_series": 60,
+  "temp_ref": 25,
+
+  "n_substrings": 3,
+  "v_bypass": -0.5,
+
+  "datasheet_referencia": {
+    "modelo": "Trina Solar TSM-260PC05A",
+    "p_max_stc_W": 260.0,
+    "v_mp_stc_V": 30.6,
+    "i_mp_stc_A": 8.50,
+    "v_oc_stc_V": 38.2,
+    "i_sc_stc_A": 9.00,
+    "fuente": "https://static.trinasolar.com/sites/default/files/Datasheet-PD05.08.pdf",
+    "nota": "El número de diodos de bypass no se especifica explícitamente en el datasheet consultado; se ha asumido el estándar habitual de la industria para módulos de 60 celdas de tamaño completo (3 diodos, 20 celdas por substring)."
+  }
+}
