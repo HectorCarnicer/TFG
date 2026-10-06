@@ -1,0 +1,14 @@
+{
+  "toolchain": "STM32CubeIDE",
+  "variant": "ApplicationTemplate",
+  "fromMx": true,
+  "name": "TFG - CubeAI",
+  "createdAt": 1772730493788,
+  "lastModified": 1772730493789,
+  "lastAccessed": 1772730493788,
+  "type": "MxProject",
+  "mcu": "STM32F411VET6",
+  "board": "STM32F411E-DISCO",
+  "ioc": "",
+  "generator": "STM32CubeMX1"
+}

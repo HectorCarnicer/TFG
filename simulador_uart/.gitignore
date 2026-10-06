@@ -1,0 +1,7 @@
+# Datos de entrada: se generan en simulacion/
+*.dat
+
+# Resultados de los tests: se guardan en el repositorio de resultados.
+# Sin barra final para que también se ignoren si son enlaces simbólicos.
+/logs
+/graficos

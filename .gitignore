@@ -1,0 +1,16 @@
+# Ficheros del escritorio (KDE Dolphin, macOS, Windows)
+.directory
+.DS_Store
+Thumbs.db
+
+# Editores
+.vscode/
+.idea/
+*.swp
+*~
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/

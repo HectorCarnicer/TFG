@@ -1,0 +1,6 @@
+# Datos de entrada: se generan en simulacion/
+*.dat
+
+# Resultados regenerables del entrenamiento y del diagnóstico
+figuras/
+comparaciones/

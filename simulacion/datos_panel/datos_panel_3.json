@@ -1,0 +1,37 @@
+{
+  "_descripcion": "Renogy RNG-100MB. Panel comercial monocristalino de 100W para uso off-grid/RV, 32 celdas (4x8), 2 diodos de bypass. Datos de datasheet oficial del fabricante.",
+  "_unidades": {
+    "v_mp": "V", "i_mp": "A", "v_oc": "V", "i_sc": "A",
+    "alpha_sc_pct": "%/°C (coef. temp. Isc, tal como aparece en datasheet)",
+    "beta_voc_pct": "%/°C (coef. temp. Voc, tal como aparece en datasheet)",
+    "gamma_pmp": "%/°C (coef. temp. Pmax)",
+    "temp_ref": "°C"
+  },
+
+  "celltype": "monoSi",
+  "v_mp": 17.7,
+  "i_mp": 5.70,
+  "v_oc": 21.2,
+  "i_sc": 6.10,
+
+  "alpha_sc_pct": 0.06,
+  "beta_voc_pct": -0.28,
+  "gamma_pmp": -0.38,
+
+  "cells_in_series": 32,
+  "temp_ref": 25,
+
+  "n_substrings": 2,
+  "v_bypass": -0.5,
+
+  "datasheet_referencia": {
+    "modelo": "Renogy RNG-100MB",
+    "p_max_stc_W": 100.0,
+    "v_mp_stc_V": 17.7,
+    "i_mp_stc_A": 5.70,
+    "v_oc_stc_V": 21.2,
+    "i_sc_stc_A": 6.10,
+    "fuente": "https://solartown.com/content/renogy/solar-panels/monocrystalline/100MB-Datasheet.pdf",
+    "nota": "Número de diodos de bypass (2) confirmado explícitamente en el datasheet. El PDF no incluía el signo de los coeficientes de Voc y Pmax (solo la magnitud); se ha aplicado el signo negativo estándar para celdas de silicio cristalino, igual que en el resto de paneles de esta carpeta."
+  }
+}

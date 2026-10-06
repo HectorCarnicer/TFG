@@ -1,0 +1,56 @@
+########################################
+# Build outputs (STM32CubeIDE / GCC)
+########################################
+Debug/
+Release/
+build/
+cmake-build-*/
+
+# Extensiones de salida de compilación que, en este proyecto, solo aparecen
+# dentro de Debug/Release (ver arriba). No se listan *.a ni *.s: el proyecto
+# versiona una librería estática (AI/Middlewares/Lib) y un fichero de arranque
+# en ensamblador (Core/Startup) que comparten esas extensiones.
+*.o
+*.d
+*.su
+*.cyclo
+*.list
+*.map
+*.elf
+*.bin
+*.hex
+*.out
+*.i
+*.ii
+*.lst
+
+########################################
+# STM32CubeIDE / Eclipse CDT project metadata
+########################################
+.metadata/
+.settings/
+.mxproject
+*.launch
+Backup/
+
+.cproject.bak
+.project.bak
+
+########################################
+# STM32CubeMX (.ioc) / STM32Cube.AI Studio
+########################################
+*.ioc.bak
+*.log
+STM32CubeMX.log
+.ai/
+
+########################################
+# OS / editor junk
+########################################
+.DS_Store
+Thumbs.db
+.directory
+*.swp
+*~
+.vscode/
+.idea/
