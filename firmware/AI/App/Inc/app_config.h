@@ -16,28 +16,15 @@
   ******************************************************************************
   */
 
+
+
 #ifndef __APP_CONFIG_H__
 #define __APP_CONFIG_H__
-
-#ifndef NUCLEO_N6_CONFIG
-#define NUCLEO_N6_CONFIG                0
-#endif
 
 #define USE_MCU_DCACHE                  1
 #define USE_MCU_ICACHE                  1
 
-
-#define USE_EXTERNAL_RAM                1
-
-#define USE_OVERDRIVE                   1       /* Using overdrive, clocks:CPU@800/NPU@1GHz, no overdrive: clocks:CPU@600/NPU@800 */
-
-
-/* RELOC configuration */
-#ifndef USE_RELOC_MODE
-#define USE_RELOC_MODE                  0
-#endif /* !USE_RELOC_MODE */
-
-
+#define USE_EXTERNAL_RAM                0
 
 #endif /* __APP_CONFIG_H__ */
 

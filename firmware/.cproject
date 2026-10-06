@@ -84,7 +84,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="AI/App/Src"/>
+						<entry excluding="app_x-cube-ai.c" flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="AI/App/Src"/>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="AI/Generated/Src"/>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="AI/Middlewares/Lib"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Core"/>
@@ -172,7 +172,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="AI/App/Src"/>
+						<entry excluding="app_x-cube-ai.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="AI/App/Src"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="AI/Generated/Src"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="AI/Middlewares/Lib"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Core"/>

@@ -1,12 +1,21 @@
 """
 rn_main.py
+==========
+Script principal del predictor de MPP: entrena una red que estima Vmp a partir
+de una ventana de muestras [V, I] y la exporta a TensorFlow Lite.
 
-@author: Héctor Carnicer Ull
+Flujo de main():
+    1. Lectura de datos/sim_{ID}.dat (IDS_DATOS) y construccion del dataset
+    2. Division train / validacion / test por curvas
+    3. Creacion del modelo
+    4. Entrenamiento
+    5. Evaluacion (punto a punto y por curva)
+    6. Exportacion a .tflite, verificacion y resumen JSON
+    7. Figuras
 
-Script principal de entrenamiento del predictor de MPP.
-
-Flujo: lectura de datos -> particion train/val/test -> creacion del modelo
--> entrenamiento -> evaluacion -> exportacion a TFLite -> visualizacion.
+Todos los parametros de uso estan agrupados al principio del fichero. Cada
+ejecucion se identifica con ID y guarda todo (modelo, resumen JSON y figuras) en
+modelos/mpp_v{ID}/, que se reescribe si ya existia. Detalles: README.md.
 """
 
 from __future__ import annotations
@@ -23,57 +32,86 @@ from lectura_escritura import (leer_datos_entrenamiento, dividir_datos,
 from funciones_modelo import (crear_modelo, entrenar_modelo, predecir,
                               predecir_tflite, evaluar, predecir_vmp_curva)
 
-# --- PARAMETROS DE UTILIZACION ----------------------------------------------
+# ===========================================================================
+# PARAMETROS DE UTILIZACION
+# ===========================================================================
 
-# --- Datos -------------------------------------------------------------------
-RUTA_DATOS = "sim_1.dat"              # JSON con metadata + simulaciones
-N_PUNTOS_CURVA = None                 # puntos tomados de cada curva; None = todos
-MODO_MUESTREO = "uniforme"            # 'uniforme' | 'aleatorio'
+# --- Datos -----------------------------------------------------------------
+DIR_DATOS = "datos"                   # carpeta con los ficheros sim_{ID}.dat
+IDS_DATOS = [1, 2, 3, 4, 5]                       # IDs de los sim_{ID}.dat a usar en el entrenamiento
+                                      # (varios IDs = se combinan todos en un unico dataset,
+                                      # p. ej. simulaciones de paneles/condiciones distintas)
+MODO_MUESTREO = "uniforme"            # reparto de las ventanas dentro de cada curva: 'uniforme' | 'aleatorio'
 DESCARTAR_I_NEGATIVA = True           # elimina la cola posterior a Voc
 
-# --- Particion del dataset -----------------------------------------------------
-FRACCION_TEST = 0.15                  # fraccion de curvas para test
-FRACCION_VALIDACION = 0.15            # fraccion de curvas para validacion
+# --- Ventana de entrada a la red (muestreo estilo P&O) ---------------------
+# La red recibe n muestras [[V_1,I_1],...,[V_n,I_n]] como las que tomaria un
+# algoritmo Perturb & Observe (ver README.md).
+N_MUESTRAS = 20                        # numero de pares [V_i, I_i] por entrada de la red
+DELTA_V = 0.125                         # paso de tension entre muestras consecutivas [V] (solo si PASO_FIJO=True)
+ASCENDENTE = True                     # sentido de barrido: True = V creciente | False = V decreciente
+N_VENTANAS_CURVA = None               # ventanas (arranques) tomadas por curva (None = todas las validas)
+PASO_FIJO = True                      # True: ventana a paso de tension fijo DELTA_V (P&O clasico)
+                                      # False: ventana de anchura VENTANA con muestras a tension
+                                      # aleatoria (P&O de paso variable, o para dar robustez frente
+                                      # a las desviaciones del paso real). Ignora DELTA_V.
+VENTANA = 2.5                         # anchura de la ventana [V] (solo si PASO_FIJO=False)
+
+# --- Particion del dataset -------------------------------------------------
+FRACCION_TEST = 0.15                  # fraccion de CURVAS para test
+FRACCION_VALIDACION = 0.15            # fraccion de CURVAS para validacion
 SEMILLA = 42                          # reproducibilidad (split + pesos)
 
-# --- Arquitectura de la red ---------------------------------------------------
-N_ENTRADAS = 2                        # [V, I], fijo por definicion del modelo
+# --- Arquitectura de la red ------------------------------------------------
+N_ENTRADAS = N_MUESTRAS * 2           # [V_1,I_1,...,V_n,I_n] (depende de la ventana)
 N_CAPAS = 5                           # numero de capas ocultas
 N_NEURONAS = 64                       # neuronas por capa oculta
-ACTIVACION = "sigmoid"
+ACTIVACION = "sigmoid"                # activacion de las capas ocultas
 OPTIMIZADOR = "nadam"                 # nadam | adam | rmsprop | sgd | adamw
 LEARNING_RATE = 1e-3
 FUNCION_PERDIDA = "mse"
 
-# --- Entrenamiento --------------------------------------------------------------
+# --- Entrenamiento ---------------------------------------------------------
 EPOCAS = 400
 BATCH_SIZE = 256
-PACIENCIA = 80                        # parada temprana; 0 = desactivada
+PACIENCIA = 80                        # parada temprana (0 = desactivada)
 REDUCIR_LR = True
 VERBOSE_ENTRENAMIENTO = 1             # 0 silencioso | 1 barra | 2 una linea/epoca
 
-# --- Estimacion de Vmp para una curva completa -----------------------------------
-AGREGACION_CURVA = "mediana"          # 'mediana' | 'media'
+# --- Estimacion de Vmp para una curva completa -----------------------------
+AGREGACION_CURVA = "mediana"          # 'mediana' | 'media' de las predicciones
+                                      # de todos los puntos de una misma curva
 
-# --- Modelo de salida -------------------------------------------------------------
-ID_MODELO = "mpp_v1"                  # identificador del modelo generado
-DIR_MODELOS = "modelos"               # carpeta de salida
+# --- Modelo de salida ------------------------------------------------------
+ID = 4                               # identificador entero del experimento
+                                      # crea/reescribe la carpeta modelos/mpp_v{ID}
+                                      # con TODOS los ficheros de este modelo
+DIR_MODELOS = "modelos"               # carpeta raiz de salida
+ID_MODELO = f"mpp_v{ID}"              # nombre base de los ficheros de este ID
+DIR_MODELO = os.path.join(DIR_MODELOS, ID_MODELO)  # carpeta propia de este ID
 CUANTIZAR = False                     # True -> .tflite cuantizado (int8)
 VERIFICAR_TFLITE = True               # compara Keras vs TFLite tras exportar
 GUARDAR_RESUMEN = True                # JSON con parametros y metricas
 
-# --- Visualizacion ------------------------------------------------------------------
-VISUALIZAR = True
+# --- Visualizacion ---------------------------------------------------------
+VISUALIZAR = True                     # genera las figuras
 MOSTRAR_FIGURAS = True                # plt.show() al final
-GUARDAR_FIGURAS = True                # guarda los PNG en DIR_MODELOS
+GUARDAR_FIGURAS = True                # guarda los PNG en DIR_MODELO/DIR_FIGURAS
 DIR_FIGURAS = "figuras"
 ESCALA_LOG_PERDIDA = True             # eje Y logaritmico en la curva de perdida
 
+# ===========================================================================
+
 
 def graficar_entrenamiento(historial, y_test, y_pred_test, ruta_png=None):
-    """Figura 2x2 de perdida, MAE, dispersion prediccion-real e histograma del error.
+    """Dibuja la figura 2x2 del entrenamiento: perdida, MAE, dispersion
+    real-prediccion (test) e histograma del error (test).
 
-    Devuelve la figura; si se indica ruta_png, la guarda tambien en disco.
+    Entrada: historial (History de Keras); y_test, y_pred_test (Vmp real y
+        predicho en test); ruta_png (si se indica, guarda la figura).
+    Salida: la figura de matplotlib.
+    Globales: lee ID_MODELO, FUNCION_PERDIDA y ESCALA_LOG_PERDIDA; crea una
+        figura en el estado global de pyplot.
     """
     hist = historial.history
     epocas = np.arange(1, len(hist["loss"]) + 1)
@@ -82,7 +120,7 @@ def graficar_entrenamiento(historial, y_test, y_pred_test, ruta_png=None):
     figura.suptitle(f"Entrenamiento del predictor de MPP  |  {ID_MODELO}",
                     fontsize=14, fontweight="bold")
 
-    # Perdida
+    # 1) Perdida
     ax = ejes[0, 0]
     ax.plot(epocas, hist["loss"], label="Entrenamiento", lw=1.6)
     if "val_loss" in hist:
@@ -95,7 +133,7 @@ def graficar_entrenamiento(historial, y_test, y_pred_test, ruta_png=None):
     ax.legend()
     ax.grid(alpha=0.3)
 
-    # MAE
+    # 2) MAE
     ax = ejes[0, 1]
     ax.plot(epocas, hist["mae"], label="Entrenamiento", lw=1.6)
     if "val_mae" in hist:
@@ -106,7 +144,7 @@ def graficar_entrenamiento(historial, y_test, y_pred_test, ruta_png=None):
     ax.legend()
     ax.grid(alpha=0.3)
 
-    # Prediccion frente a valor real (test)
+    # 3) Prediccion frente a valor real (test)
     ax = ejes[1, 0]
     y_r = np.asarray(y_test).reshape(-1)
     y_p = np.asarray(y_pred_test).reshape(-1)
@@ -119,7 +157,7 @@ def graficar_entrenamiento(historial, y_test, y_pred_test, ruta_png=None):
     ax.legend()
     ax.grid(alpha=0.3)
 
-    # Histograma del error
+    # 4) Histograma del error
     ax = ejes[1, 1]
     error = y_p - y_r
     ax.hist(error, bins=60, alpha=0.8, edgecolor="black", linewidth=0.4)
@@ -140,13 +178,19 @@ def graficar_entrenamiento(historial, y_test, y_pred_test, ruta_png=None):
 
 
 def graficar_curva_ejemplo(modelo, curva, ruta_png=None):
-    """Curvas I-V y P-V de una curva de test, con el Vmp real y el predicho.
+    """Dibuja las curvas I-V y P-V de una curva de test, con el Vmp real y el predicho.
 
-    Devuelve la figura; si se indica ruta_png, la guarda tambien en disco.
+    Entrada: modelo (Keras); curva (dict de una curva, ver info['curvas'] de
+        leer_datos_entrenamiento); ruta_png (si se indica, guarda la figura).
+    Salida: la figura de matplotlib.
+    Globales: lee N_MUESTRAS, DELTA_V, ASCENDENTE, AGREGACION_CURVA, PASO_FIJO,
+        VENTANA y SEMILLA; crea una figura en el estado global de pyplot.
     """
     V, I = curva["V"], curva["I"]
     P = V * I
-    vmp_pred = predecir_vmp_curva(modelo, V, I, AGREGACION_CURVA)
+    vmp_pred = predecir_vmp_curva(modelo, V, I, N_MUESTRAS, DELTA_V, ASCENDENTE,
+                                  AGREGACION_CURVA, paso_fijo=PASO_FIJO, ventana=VENTANA,
+                                  semilla=SEMILLA)
 
     figura, ax_iv = plt.subplots(figsize=(9, 5.5))
     ax_iv.plot(V, I, color="tab:blue", lw=1.8, label="Curva I-V")
@@ -179,19 +223,36 @@ def graficar_curva_ejemplo(modelo, curva, ruta_png=None):
 
 
 def main():
-    inicio = time.time()
-    os.makedirs(DIR_MODELOS, exist_ok=True)
-    ruta_tflite = os.path.join(DIR_MODELOS, f"{ID_MODELO}.tflite")
+    """Ejecuta el flujo completo: datos, entrenamiento, evaluacion, exportacion y figuras.
 
-    # --- 1. Datos ------------------------------------------------------------
+    Entrada: ninguna (usa los parametros de usuario del principio del fichero).
+    Salida: (modelo, historial), el modelo Keras entrenado y su History. Escribe
+        en modelos/mpp_v{ID}/ el .tflite, el resumen JSON y las figuras.
+    Globales: lee todos los parametros de usuario; no modifica ninguno.
+    """
+    inicio = time.time()
+    os.makedirs(DIR_MODELO, exist_ok=True)
+    ruta_tflite = os.path.join(DIR_MODELO, f"{ID_MODELO}.tflite")
+    print(f"[modelo] ID={ID}  ->  carpeta de salida: {DIR_MODELO}  "
+          f"(se reescribira si ya existia)")
+
+    # --- 1. Datos ----------------------------------------------------------
     print("\n=== 1. LECTURA DE DATOS ===")
+    rutas_datos = [os.path.join(DIR_DATOS, f"sim_{id_dato}.dat") for id_dato in IDS_DATOS]
+    print(f"[datos] IDS_DATOS={IDS_DATOS}  ->  {rutas_datos}")
     X, y, grupos, info = leer_datos_entrenamiento(
-        RUTA_DATOS,
-        n_puntos=N_PUNTOS_CURVA,
+        rutas_datos,
+        n_muestras=N_MUESTRAS,
+        delta_v=DELTA_V,
+        ascendente=ASCENDENTE,
+        n_ventanas=N_VENTANAS_CURVA,
         modo_muestreo=MODO_MUESTREO,
         descartar_corriente_negativa=DESCARTAR_I_NEGATIVA,
         semilla=SEMILLA,
-        devolver_curvas=True)
+        devolver_curvas=True,
+        ids_datos=IDS_DATOS,
+        paso_fijo=PASO_FIJO,
+        ventana=VENTANA)
 
     particion = dividir_datos(X, y, grupos,
                               fraccion_test=FRACCION_TEST,
@@ -201,7 +262,7 @@ def main():
     X_val, y_val, _ = particion["val"]
     X_test, y_test, g_test = particion["test"]
 
-    # --- 2. Modelo -------------------------------------------------------------
+    # --- 2. Modelo ---------------------------------------------------------
     print("\n=== 2. CREACION DEL MODELO ===")
     modelo = crear_modelo(n_entradas=N_ENTRADAS,
                           n_capas=N_CAPAS,
@@ -214,7 +275,7 @@ def main():
                           y_referencia=y_train,
                           nombre=ID_MODELO)
 
-    # --- 3. Entrenamiento -------------------------------------------------------
+    # --- 3. Entrenamiento --------------------------------------------------
     print("\n=== 3. ENTRENAMIENTO ===")
     historial = entrenar_modelo(modelo, X_train, y_train, X_val, y_val,
                                 epocas=EPOCAS,
@@ -224,20 +285,24 @@ def main():
                                 semilla=SEMILLA,
                                 verbose=VERBOSE_ENTRENAMIENTO)
 
-    # --- 4. Evaluacion ---------------------------------------------------------
+    # --- 4. Evaluacion -----------------------------------------------------
     print("\n=== 4. EVALUACION ===")
     y_pred_test = predecir(modelo, X_test)
     metricas_punto = evaluar(y_test, y_pred_test, "test (punto a punto)")
 
-    # Metricas agregando las predicciones de todos los puntos de cada curva
+    # Agregando las predicciones de todos los puntos de cada curva
     ids_test = set(np.unique(g_test).tolist())
     curvas_test = [c for c in info["curvas"] if c["id"] in ids_test]
     vmp_real = np.array([c["vmp"] for c in curvas_test])
-    vmp_pred = np.array([predecir_vmp_curva(modelo, c["V"], c["I"], AGREGACION_CURVA)
+    vmp_pred = np.array([predecir_vmp_curva(modelo, c["V"], c["I"],
+                                            N_MUESTRAS, DELTA_V, ASCENDENTE,
+                                            AGREGACION_CURVA,
+                                            paso_fijo=PASO_FIJO, ventana=VENTANA,
+                                            semilla=SEMILLA)
                          for c in curvas_test])
     metricas_curva = evaluar(vmp_real, vmp_pred, f"test ({AGREGACION_CURVA} por curva)")
 
-    # --- 5. Exportacion a TFLite -------------------------------------------------
+    # --- 5. Exportacion a TFLite -------------------------------------------
     print("\n=== 5. EXPORTACION A TENSORFLOW LITE ===")
     representativos = X_train[np.random.default_rng(SEMILLA).choice(
         X_train.shape[0], size=min(500, X_train.shape[0]), replace=False)]
@@ -254,14 +319,23 @@ def main():
         print(f"[tflite] Desviacion max. respecto al modelo Keras: {desviacion:.6f} V")
 
     if GUARDAR_RESUMEN:
-        guardar_resumen(os.path.join(DIR_MODELOS, f"{ID_MODELO}_resumen.json"), {
+        guardar_resumen(os.path.join(DIR_MODELO, f"{ID_MODELO}_resumen.json"), {
+            "id": ID,
             "id_modelo": ID_MODELO,
-            "datos": {"ruta": RUTA_DATOS,
+            "datos": {"dir_datos": DIR_DATOS,
+                      "ids_datos": IDS_DATOS,
+                      "rutas": info["rutas"],
                       "n_curvas": info["n_curvas"],
-                      "n_muestras": info["n_muestras"],
-                      "n_puntos_curva": N_PUNTOS_CURVA,
+                      "n_curvas_descartadas": info["n_curvas_descartadas"],
+                      "n_ejemplos": info["n_ejemplos"],
+                      "ventanas_por_curva": info["ventanas_por_curva"],
+                      "ventana": info["ventana"],
+                      "n_ventanas_curva": N_VENTANAS_CURVA,
                       "modo_muestreo": MODO_MUESTREO,
+                      "descartar_corriente_negativa": DESCARTAR_I_NEGATIVA,
                       "metadata": info["metadata"]},
+            "particion": {"fraccion_test": FRACCION_TEST,
+                          "fraccion_val": FRACCION_VALIDACION},
             "arquitectura": {"n_entradas": N_ENTRADAS, "n_capas": N_CAPAS,
                              "n_neuronas": N_NEURONAS, "activacion": ACTIVACION,
                              "optimizador": OPTIMIZADOR, "learning_rate": LEARNING_RATE,
@@ -275,10 +349,10 @@ def main():
             "cuantizado": CUANTIZAR,
         })
 
-    # --- 6. Visualizacion --------------------------------------------------------
+    # --- 6. Visualizacion --------------------------------------------------
     if VISUALIZAR:
         print("\n=== 6. VISUALIZACION ===")
-        directorio_figuras = os.path.join(DIR_MODELOS, DIR_FIGURAS)
+        directorio_figuras = os.path.join(DIR_MODELO, DIR_FIGURAS)
         os.makedirs(directorio_figuras, exist_ok=True)
         ruta_1 = os.path.join(directorio_figuras, f"{ID_MODELO}_entrenamiento.png") if GUARDAR_FIGURAS else None
         ruta_2 = os.path.join(directorio_figuras, f"{ID_MODELO}_curva_ejemplo.png") if GUARDAR_FIGURAS else None

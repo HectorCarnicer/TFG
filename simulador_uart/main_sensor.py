@@ -18,12 +18,7 @@ from lectura_escritura import (
     escribir_cabecera_log,
     escribir_log,
 )
-from simulador_sensor import (
-    abrir_puerto,
-    cerrar_puerto,
-    ejecutar_modo_simulacion,
-    ejecutar_simulacion,
-)
+from simulador_sensor import abrir_puerto, cerrar_puerto, ejecutar_modo_simulacion
 
 
 # ============================================================================
@@ -43,36 +38,25 @@ ID_DATOS = "1"                 # selecciona datos/sim_{ID_DATOS}.dat
 RUTA_DATOS = os.path.join(DIRECTORIO_DATOS, f"sim_{ID_DATOS}.dat")
 
 # --- Modo de simulación ---
-# "Consecutivo" : recorre curvas del dataset una a una, enviando de cada
-#                 una varios puntos aleatorios.
-# "Simulacion"  : el primer punto es aleatorio; cada siguiente sigue la
-#                 tensión predicha por el micro, cambiando de curva de
-#                 trabajo cada MUESTRAS_HASTA_CAMBIO muestras, hasta
-#                 alcanzar MUESTRAS_TOTALES.
-MODO_SIM = "Consecutivo"
+# El primer punto es aleatorio; cada siguiente sigue la tensión predicha
+# por el micro, cambiando de curva de trabajo cada MUESTRAS_HASTA_CAMBIO
+# muestras, hasta alcanzar MUESTRAS_TOTALES.
+MUESTRAS_HASTA_CAMBIO = 100     # muestras de seguimiento antes de cambiar de curva
+MUESTRAS_TOTALES = 2000        # muestras totales del test
 
-# Parámetros del modo "Consecutivo"
-N_CURVAS = None                # None = todas las curvas del dataset
-N_PUNTOS_POR_CURVA = 20        # puntos aleatorios enviados por curva
-
-# Parámetros del modo "Simulacion"
-MUESTRAS_HASTA_CAMBIO = 15     # muestras de seguimiento antes de cambiar de curva
-MUESTRAS_TOTALES = 300         # muestras totales del test
-
-# Tipo de muestreo dentro del modo "Simulacion":
-# "Instantaneo" : el siguiente punto es el más cercano a la predicción.
+# Tipo de muestreo:
+# "Instantaneo" : el siguiente punto es directamente la predicción.
 # "Relativo"    : la tensión objetivo se acerca gradualmente a la
 #                 predicción, un paso de
 #                 (V_predicho - V_actual) / MUESTRAS_HASTA_CAMBIO
 #                 por muestra.
 TIPO_MUESTREO = "Instantaneo"
 
-# Común a ambos modos
-SEMILLA_ALEATORIA = 43753      # None = no reproducible
+SEMILLA_ALEATORIA =  13547   # None = no reproducible
 
 # --- Logging ---
 DIRECTORIO_LOGS = "logs"
-ID_TEST = "001"                # identifica logs/test_{ID_TEST}.log
+ID_TEST = "029"               # identifica logs/test_{ID_TEST}.log
 
 
 # ============================================================================
@@ -80,11 +64,7 @@ ID_TEST = "001"                # identifica logs/test_{ID_TEST}.log
 # ============================================================================
 
 def main():
-    if MODO_SIM not in ("Consecutivo", "Simulacion"):
-        raise ValueError(
-            f"MODO_SIM no reconocido: {MODO_SIM!r} (debe ser 'Consecutivo' o 'Simulacion')"
-        )
-    if MODO_SIM == "Simulacion" and TIPO_MUESTREO not in ("Instantaneo", "Relativo"):
+    if TIPO_MUESTREO not in ("Instantaneo", "Relativo"):
         raise ValueError(
             f"TIPO_MUESTREO no reconocido: {TIPO_MUESTREO!r} "
             "(debe ser 'Instantaneo' o 'Relativo')"
@@ -98,19 +78,14 @@ def main():
     fh_log = abrir_log(DIRECTORIO_LOGS, ID_TEST)
 
     campos_cabecera = {
-        "Modo de simulación": MODO_SIM,
         "Puerto serie": PUERTO,
         "Baudios": BAUDIOS,
         "Archivo de datos": RUTA_DATOS,
+        "Muestras hasta cambio de curva": MUESTRAS_HASTA_CAMBIO,
+        "Muestras totales": MUESTRAS_TOTALES,
+        "Tipo de muestreo": TIPO_MUESTREO,
+        "Semilla aleatoria": SEMILLA_ALEATORIA,
     }
-    if MODO_SIM == "Consecutivo":
-        campos_cabecera["Nº curvas a usar"] = N_CURVAS if N_CURVAS is not None else n_disponibles
-        campos_cabecera["Nº puntos/curva"] = N_PUNTOS_POR_CURVA
-    else:
-        campos_cabecera["Muestras hasta cambio de curva"] = MUESTRAS_HASTA_CAMBIO
-        campos_cabecera["Muestras totales"] = MUESTRAS_TOTALES
-        campos_cabecera["Tipo de muestreo"] = TIPO_MUESTREO
-    campos_cabecera["Semilla aleatoria"] = SEMILLA_ALEATORIA
 
     escribir_cabecera_log(fh_log, ID_TEST, campos_cabecera)
 
@@ -119,29 +94,17 @@ def main():
         print(f"Abriendo puerto {PUERTO} @ {BAUDIOS} baudios...")
         ser = abrir_puerto(PUERTO, BAUDIOS, TIMEOUT_RESPUESTA_S)
 
-        if MODO_SIM == "Consecutivo":
-            ejecutar_simulacion(
-                ser=ser,
-                fh_log=fh_log,
-                dataset=dataset,
-                n_curvas=N_CURVAS,
-                n_puntos_por_curva=N_PUNTOS_POR_CURVA,
-                semilla=SEMILLA_ALEATORIA,
-                reintentos_timeout=REINTENTOS_POR_TIMEOUT,
-                retardo_entre_puntos_s=RETARDO_ENTRE_PUNTOS_S,
-            )
-        else:
-            ejecutar_modo_simulacion(
-                ser=ser,
-                fh_log=fh_log,
-                dataset=dataset,
-                muestras_hasta_cambio=MUESTRAS_HASTA_CAMBIO,
-                muestras_totales=MUESTRAS_TOTALES,
-                tipo_muestreo=TIPO_MUESTREO,
-                semilla=SEMILLA_ALEATORIA,
-                reintentos_timeout=REINTENTOS_POR_TIMEOUT,
-                retardo_entre_puntos_s=RETARDO_ENTRE_PUNTOS_S,
-            )
+        ejecutar_modo_simulacion(
+            ser=ser,
+            fh_log=fh_log,
+            dataset=dataset,
+            muestras_hasta_cambio=MUESTRAS_HASTA_CAMBIO,
+            muestras_totales=MUESTRAS_TOTALES,
+            tipo_muestreo=TIPO_MUESTREO,
+            semilla=SEMILLA_ALEATORIA,
+            reintentos_timeout=REINTENTOS_POR_TIMEOUT,
+            retardo_entre_puntos_s=RETARDO_ENTRE_PUNTOS_S,
+        )
 
     except KeyboardInterrupt:
         escribir_log(fh_log, "\nTest interrumpido manualmente (Ctrl+C).")

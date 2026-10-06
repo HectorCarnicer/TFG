@@ -11,7 +11,7 @@ Autor: Héctor Carnicer Ull
 Controlador MPPT (Maximum Power Point Tracking) para un panel fotovoltaico
 bajo sombreado parcial, que usa una red neuronal embebida en un
 microcontrolador para estimar la tensión de máxima potencia (Vmp) a partir
-de un punto de operación (V, I). El proyecto cubre todo el pipeline: desde
+de una ventana de muestras (V, I) tomadas durante un barrido de tensión. El proyecto cubre todo el pipeline: desde
 la simulación física del panel hasta el firmware que corre la inferencia
 en el microcontrolador, pasando por el entrenamiento del modelo y un banco
 de pruebas que simula el sensor real para validar el conjunto sin
@@ -25,7 +25,7 @@ propio README detallado:
 | # | Componente | Carpeta | Dónde corre | README |
 |---|---|---|---|---|
 | 1 | Simulador de panel solar | `simulacion/` | PC (Python) | `Simulación de panel solar bajo sombreado parcial` |
-| 2 | Predictor de MPP (red neuronal) | `red_neuronal/` | PC (Python/TensorFlow) | `Predictor de MPP con red neuronal (v1)` |
+| 2 | Predictor de MPP (red neuronal) | `red_neuronal/` | PC (Python/TensorFlow) | `Predictor de MPP con red neuronal (V2: ventana de muestras)` |
 | 3 | Firmware del microcontrolador | `firmware/` | STM32F411E-DISCO | `MPPT multi-módulo con red neuronal (STM32F411)` |
 | 4 | Simulador de sensor UART | `simulador_uart/` | PC (Python) | `Simulador de sensor UART` |
  
@@ -36,9 +36,9 @@ propio README detallado:
         │                          (curvas I-V + MPP simuladas,
         │                           varios paneles / sombreados)
         ▼
- (2) Predictor de MPP    ──►  entrena una red densa (V,I)→Vmp
-        │                          sobre sim_<ID>.dat
-        │                     exporta modelos/mpp_v1.tflite
+ (2) Predictor de MPP    ──►  entrena una red densa que recibe una
+        │                          ventana de N pares (V,I) y predice Vmp
+        │                     exporta modelos/mpp_v<ID>/mpp_v<ID>.tflite
         ▼
  (3) Firmware STM32      ──►  el .tflite se integra vía X-CUBE-AI /
         │                     STM32Cube.AI Studio (carpeta AI/) y corre
@@ -68,27 +68,44 @@ proyecto.
  
 ### 2. Predictor de MPP (red neuronal)
  
-Entrena una red densa que recibe un punto (V, I) y predice el Vmp de la
-curva a la que pertenece, usando los datos generados por el simulador de
-panel. Incluye normalización/desnormalización integradas en el propio
-modelo, partición del dataset por curva completa (evita fuga de
-información), exportación a TensorFlow Lite (con cuantización opcional) y
-verificación Keras vs. TFLite. `diagnostico_datos.py` calcula, antes de
-entrenar, el techo teórico de R² alcanzable con la entrada (V, I) —
-relevante porque con sombreado parcial ese techo puede ser bajo por
-indeterminación física, no por un mal ajuste del modelo.
- 
-Produce el `.tflite` que se integra en el firmware.
+Entrena una red densa de regresión que recibe una ventana de N pares (V, I)
+consecutivos de la curva, tomados con un paso de tensión fijo como los que
+recogería un barrido en tiempo real, y predice el Vmp de esa curva. Con un
+único punto la predicción está limitada por la indeterminación física del
+sombreado parcial (curvas distintas pasan por el mismo punto); la ventana
+añade la forma local de la curva y resuelve buena parte de esa ambigüedad.
+
+Puede entrenar combinando varios `sim_<ID>.dat`. Cada modelo se guarda en
+`modelos/mpp_v<ID>/` junto con un resumen JSON con la configuración de
+datos, ventana, partición, arquitectura y métricas. `diagnostico_datos.py`
+evalúa un modelo ya entrenado sobre su propio conjunto de test y
+`comparador_rn.py` compara varios modelos entre sí.
+
+El modelo integrado en el firmware de esta versión es `mpp_v3`: ventana de
+20 muestras con paso de 0,125 V en sentido ascendente, entrenado con
+`sim_1.dat`.
  
 ### 3. Firmware del microcontrolador (STM32F411)
  
 Corre en un STM32F411E-DISCO. Recibe pares (V, I) por UART (8 bytes,
-2 floats little-endian), ejecuta la inferencia con el modelo embebido
-(generado con X-CUBE-AI / STM32Cube.AI Studio a partir del `.tflite` del
-componente 2) y devuelve por UART la predicción de Vmp junto con el
-tiempo de inferencia. Implementado como una máquina de estados
-(`IDLE` → `WAITING` → `BUSY`) con dos modos de operación (manual/automático)
-seleccionables por botón físico.
+2 floats little-endian) y responde a cada uno con la siguiente orden de
+tensión, calculada con un algoritmo Perturb & Observe (P&O) combinado con un
+salto predicho por la red neuronal:
+
+- Mientras la variación de potencia entre muestras es pequeña, el sistema
+  se considera en el entorno del MPP y sigue con P&O de paso fijo
+  (0,125 V), guardando las muestras en una ventana.
+- Cuando la potencia varía bruscamente y la ventana tiene 20 muestras,
+  ejecuta la inferencia con el modelo embebido (generado con X-CUBE-AI /
+  STM32Cube.AI Studio a partir del `.tflite` del componente 2) y ordena
+  directamente la tensión predicha.
+- Si la variación de tensión y corriente apunta a un cambio de
+  irradiancia, descarta la ventana acumulada y empieza una nueva.
+- Cada 60 muestras sin salto fuerza una revalidación, para no quedarse
+  atrapado en un máximo local.
+
+Implementado como una máquina de estados (`IDLE` → `WAITING` → `BUSY`) con
+dos modos de operación (manual/automático) seleccionables por botón físico.
  
 ### 4. Simulador de sensor UART
  
@@ -99,7 +116,8 @@ predicción del micro y calcula su error frente al Vmp real. Dos modos:
 `"Consecutivo"` (recorre curvas del dataset punto a punto, para validar
 la precisión del modelo) y `"Simulacion"` (simula un seguimiento MPPT
 real con cambios bruscos de irradiancia en mitad del seguimiento, para
-validar el comportamiento dinámico). Genera logs y gráficos de error.
+validar el comportamiento dinámico). Genera logs, gráficos de error y
+gráficos de la potencia entregada frente a la máxima disponible.
 
 ## Datos de simulación
 
@@ -110,10 +128,16 @@ su tamaño (unos 15 MB cada uno). Se generan con el simulador de panel
 panel, el rango de irradiancia, la temperatura y la semilla con que se
 generó.
 
-El dataset usado en esta versión es `sim_1.dat`: panel
-`datos_panel_0.json`, 500 curvas, irradiancia por substring entre 150 y
-1000 W/m², 35 °C y semilla 43753. Para usarlo en los demás componentes hay
-que copiarlo a:
+En esta versión se usan cinco datasets, todos con 500 curvas, irradiancia
+por substring entre 150 y 1000 W/m² y 35 °C:
 
-- `red_neuronal/sim_1.dat`
+| Dataset | Panel | Semilla |
+|---|---|---|
+| `sim_1.dat` | `datos_panel_0.json` | 43753 |
+| `sim_2.dat` … `sim_5.dat` | `datos_panel_1.json` … `datos_panel_4.json` | sin fijar |
+
+Solo `sim_1.dat` se puede regenerar idéntico. Para usar los datasets en los
+demás componentes hay que copiarlos a:
+
+- `red_neuronal/datos/sim_<ID>.dat`
 - `simulador_uart/datos/sim_1.dat`

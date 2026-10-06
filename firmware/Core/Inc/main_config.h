@@ -45,6 +45,20 @@ void UART2_SendString(const char *str);
 #define LED_BUSY_Pin GPIO_PIN_5
 #define LED_BUSY_GPIO_Port GPIOA
 
+/* Algoritmo P&O + salto con red neuronal (ver README, "Algoritmo de control") --*/
+#define N_MUESTRAS  20U     /*!< Pares [V,I] de la ventana que consume la red */
+#define DV          0.125f  /*!< Paso de perturbación P&O y del barrido forzado (V) */
+#define DP_LIM      0.05f   /*!< |DeltaP| bajo el cual se considera "entorno de MPP" (W) */
+#define DV_LIM      0.03f   /*!< |DeltaV| bajo el cual se sospecha cambio de irradiancia (V) */
+#define DI_LIM      0.15f   /*!< |DeltaI| sobre el cual se sospecha cambio de irradiancia (A) */
+#define N_REVALIDACION 60U  /*!< Muestras sin salto con RN tras las que se fuerza una revalidación */
+
+#define BARRIDO_FORZADO 0U  /*!< 1 = la revalidación usa un barrido ascendente forzado; 0 = P&O normal */
+
+#define V_MAX_BARRIDO 19.0f /*!< Techo del barrido forzado (V); al alcanzarlo salta a V_MIN_BARRIDO */
+#define V_MIN_BARRIDO 6.0f  /*!< Tensión de reinicio del barrido forzado (V) */
+#define N_SIN_AVANCE_BARRIDO N_MUESTRAS /*!< Vaciados seguidos de ventana que se interpretan como bloqueo del barrido */
+
 #ifdef __cplusplus
 }
 #endif

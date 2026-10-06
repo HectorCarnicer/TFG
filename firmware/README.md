@@ -1,11 +1,14 @@
 # MPPT multi-módulo con red neuronal (STM32F411)
 
-Firmware para el STM32F411E-DISCO (STM32F411VET6) que estima el punto de máxima
-potencia (Vmpp) de un módulo solar a partir de un par tensión/corriente (V, I),
-usando una red neuronal embebida generada con X-CUBE-AI / STM32Cube.AI Studio.
-El microcontrolador recibe los pares (V, I) por UART desde un PC (que simula el
-comportamiento de un sensor conectado a un DC/DC y a un panel solar), calcula la
-inferencia y devuelve la predicción junto con el tiempo de inferencia.
+Firmware para el STM32F411E-DISCO (STM32F411VET6) que controla el punto de
+trabajo de un panel solar combinando un algoritmo Perturba y Observa (P&O) con
+saltos de tensión calculados por una red neuronal embebida (generada con
+X-CUBE-AI / STM32Cube.AI Studio) que estima la tensión del punto de máxima
+potencia (Vmpp) a partir de una ventana de muestras (V, I). El
+microcontrolador recibe las muestras por UART desde un PC (que simula el
+sensor conectado a un DC/DC y a un panel solar), decide la siguiente orden de
+tensión y la devuelve junto con el tiempo de inferencia. El algoritmo se
+describe en la sección "Algoritmo de control".
 
 ## Hardware
 
@@ -14,7 +17,7 @@ inferencia y devuelve la predicción junto con el tiempo de inferencia.
 | Botón modo MANUAL       | PD11 | Entrada, interrupción EXTI, flanco de subida |
 | Botón modo AUTO         | PD12 | Entrada, interrupción EXTI, flanco de subida |
 | LED STATE_IDLE           | PA1  | Salida push-pull |
-| LED STATE_WAITING         | PA4  | Reubicado desde PA3 (en uso por USART2_RX) |
+| LED STATE_WAITING         | PA4  | Salida push-pull (PA3 está ocupado por USART2_RX) |
 | LED STATE_BUSY            | PA5  | Salida push-pull |
 | USART2 TX                | PA2  | 115200 baudios, 8N1 |
 | USART2 RX                | PA3  | 115200 baudios, 8N1 |
@@ -58,8 +61,9 @@ Implementada en `state_m.c`. Tres estados:
 - **STATE_WAITING** — esperando el siguiente par (V, I). En modo `MODE_AUTO`
   basta con que llegue por UART; en `MODE_MANUAL` además hace falta pulsar
   PD11.
-- **STATE_BUSY** — ejecuta la inferencia sobre el último par recibido, mide el
-  tiempo y envía el resultado por UART. Vuelve a `STATE_WAITING`.
+- **STATE_BUSY** — procesa el último par recibido con el algoritmo de control
+  (`StateMachine_ProcessSample()`), envía el resultado por UART y vuelve a
+  `STATE_WAITING`.
 
 Transiciones:
 
@@ -75,24 +79,129 @@ Transiciones:
   el HAL aborta la recepción en curso al detectar un error; esta callback la
   limpia y la rearma, para que un error puntual no deje la recepción muerta
   de forma permanente.
-- `STATE_WAITING` con condición cumplida → `STATE_BUSY`: copia local del par
-  recibido, `AI_SetInputs()` → `AI_RunInference()` (con medición de tiempo
-  mediante `Get_Timer1_Ticks_us()`) → `AI_GetOutput()` → formatea y envía el
-  resultado por `UART2_SendString()` → vuelve a `STATE_WAITING`.
+- `STATE_WAITING` con condición cumplida → `STATE_BUSY`:
+  `StateMachine_ProcessSample()` calcula la orden de tensión (si toca saltar,
+  ejecuta `AI_SetInputs()` → `AI_RunInference()` midiendo el tiempo con
+  `Get_Timer1_Ticks_us()` → `AI_GetOutput()`), la envía por
+  `UART2_SendString()` y vuelve a `STATE_WAITING`.
 
 ## Protocolo UART
 
 El PC envía cada muestra como 8 bytes sin cabecera: dos `float` de 32 bits en
 little-endian, `[tensión][corriente]` (mismo layout que `VI_Pair_t` en
-`data_types.h`). El microcontrolador responde con una línea de texto:
+`data_types.h`). El microcontrolador responde con una línea de texto por
+muestra:
 
 ```
-V=  12.34 V | I=  2.10 A | Prediccion=   18.7423 | t_inferencia=    842 us
+V=  12.34 V | I=  2.10 A | Prediccion=  12.4750 | t_inferencia=      0 us
 ```
+
+`Prediccion` es la **orden de tensión** para la siguiente muestra (V): la
+predicción de la red en un salto, o el resultado del paso de P&O o del barrido
+en el resto de casos. `t_inferencia` es la duración de la inferencia (µs) y
+vale 0 cuando en esa muestra no se ha ejecutado la red.
+
+## Algoritmo de control
+
+Implementado en `state_m.c`; los parámetros están en `main_config.h`. En cada
+muestra recibida se calcula la orden de tensión siguiendo estos pasos.
+
+**Magnitudes.** A partir de la muestra actual y la anterior se calculan
+`ΔP`, `ΔV` y `ΔI`. La primera muestra tras entrar en modo AUTO/MANUAL no tiene
+anterior: solo se guarda en la ventana.
+
+**Ventana.** Se acumulan hasta `N_MUESTRAS` pares [V, I]. Cuando está llena,
+la red puede consumirla.
+
+**Entorno de MPP.** Si `|ΔP| < DP_LIM` se considera que el sistema está en el
+entorno de un máximo: se aplica P&O clásico (se mantiene el sentido de
+perturbación si la potencia subió, se invierte si bajó; paso `DV`) y se guarda
+la muestra en la ventana.
+
+**Salto con red neuronal.** Si `|ΔP| ≥ DP_LIM` (fuera del entorno de MPP) y la
+ventana está llena, se ejecuta la red y la orden de tensión pasa a ser
+directamente su predicción (el sistema "salta" a la tensión predicha). Tras el
+salto se vacía la ventana. Si la ventana aún no está llena, se sigue
+recogiendo muestras con P&O.
+
+**Ventana siempre fresca.** Al abandonar el entorno de MPP se vacía la
+ventana: lo acumulado mientras el sistema estaba convergido ya no representa
+la situación actual (p. ej. tras un cambio de curva) y saltar con esos datos
+daría una predicción obsoleta.
+
+**Detección de cambio de irradiancia.** Fuera del entorno de MPP, si
+`|ΔV| < DV_LIM` o `|ΔI| > DI_LIM`, la variación de potencia no se explica por
+el paso de tensión ordenado (V casi no se movió, o I cambió bruscamente), de
+modo que se interpreta como un cambio real de irradiancia y se vacía la
+ventana. `DI_LIM` depende del panel: debe quedar por encima de lo que cambia
+la corriente en un paso normal de P&O y por debajo de los saltos de corriente
+de un cambio de curva real.
+
+**Revalidación periódica.** Si pasan `N_REVALIDACION` muestras seguidas sin
+saltar con la red, se trata la muestra actual como si estuviera fuera del
+entorno de MPP: se descarta la ventana y se recoge una nueva para un salto de
+comprobación. Sin ella, un P&O que converge a un máximo local se queda
+atrapado ahí, porque nunca vuelve a considerarse "lejos del MPP". Es relevante
+en paneles con varios substrings con diodos de bypass, cuya curva P-V puede
+tener más de un máximo.
+
+**Barrido forzado de revalidación (`BARRIDO_FORZADO`).** Con `BARRIDO_FORZADO`
+a 0, la ventana de revalidación se rellena con el P&O normal. Con 1, durante
+la revalidación la orden de tensión es un barrido ascendente de `+DV` por
+muestra:
+
+- Motivo: el P&O reactivo, rebotando sobre un máximo ya convergido, produce
+  ventanas con oscilación alrededor de un punto, un tipo de entrada que puede
+  no estar en el conjunto de entrenamiento de la red (barridos monótonos con
+  paso `DV`). Un barrido ascendente reproduce esa forma de ventana.
+- Diente de sierra: el barrido está acotado por `V_MAX_BARRIDO`. Si el
+  siguiente paso lo superara, la orden pasa directamente a `V_MIN_BARRIDO` y se
+  descarta la ventana en curso, de modo que toda ventana usada para inferencia
+  es puramente ascendente (no se invierte el sentido del barrido, para no
+  generar ventanas descendentes o con inflexión).
+- Cota superior: sin `V_MAX_BARRIDO`, un barrido que parte cerca del pico alto
+  seguiría subiendo hacia la tensión de circuito abierto, donde la corriente
+  cae tan bruscamente que `|ΔI| > DI_LIM` vaciaría la ventana casi en cada
+  muestra y el salto no llegaría a ejecutarse.
+- Cota inferior: `V_MIN_BARRIDO` debe quedar en una zona donde el convertidor
+  siga fielmente las órdenes de tensión (la zona cercana a 0 V puede no
+  hacerlo) y por debajo del pico de menor tensión del panel, para poder
+  explorarlo.
+- Salvaguarda contra bloqueos: si la placa no sigue las órdenes del barrido
+  (`|ΔV| ≈ 0`), la detección de cambio de irradiancia vaciaría la ventana en
+  cada muestra y esta nunca se completaría. Por ello, durante un barrido
+  forzado se cuentan los vaciados consecutivos (`g_resets_sin_avance`); al
+  llegar a `N_SIN_AVANCE_BARRIDO` se deja de vaciar la ventana para que se
+  complete y el salto con la red ordene una tensión distinta. El contador se
+  pone a cero cuando la placa responde, tras un salto con la red y al dar la
+  vuelta el diente de sierra.
+
+Con `BARRIDO_FORZADO` a 0, `V_MAX_BARRIDO`, `V_MIN_BARRIDO` y
+`N_SIN_AVANCE_BARRIDO` no se usan. El log no registra el valor de
+`BARRIDO_FORZADO`, conviene anotar con cuál se compiló cada prueba.
+
+### Parámetros (`main_config.h`)
+
+| Macro                  | Valor  | Significado |
+|------------------------|--------|-------------|
+| `N_MUESTRAS`           | 20     | Pares [V, I] de la ventana que consume la red |
+| `DV`                   | 0,125 V | Paso de P&O y del barrido forzado |
+| `DP_LIM`               | 0,05 W | Umbral de `|ΔP|` para el entorno de MPP |
+| `DV_LIM`               | 0,03 V | Umbral inferior de `|ΔV|` para sospechar cambio de irradiancia |
+| `DI_LIM`               | 0,15 A | Umbral superior de `|ΔI|` para sospechar cambio de irradiancia |
+| `N_REVALIDACION`       | 60     | Muestras sin salto tras las que se fuerza una revalidación |
+| `BARRIDO_FORZADO`      | 0      | 1 = barrido forzado en la revalidación; 0 = P&O normal |
+| `V_MAX_BARRIDO`        | 19 V   | Techo del barrido forzado |
+| `V_MIN_BARRIDO`        | 6 V    | Tensión de reinicio del barrido forzado |
+| `N_SIN_AVANCE_BARRIDO` | `N_MUESTRAS` | Vaciados seguidos que se interpretan como bloqueo |
+
+`DP_LIM`, `DV_LIM` y `DI_LIM` dependen del panel y del ruido de medida y se
+ajustan experimentalmente.
 
 ## Integración de la red neuronal
 
-El modelo (`[V, I] → [Vmpp]`, 2 entradas y 1 salida en `float32`) se genera en
+El modelo (ventana de `N_MUESTRAS` pares [V, I] → Vmpp; `2·N_MUESTRAS`
+entradas intercaladas `V0, I0, V1, I1, …` y 1 salida, en `float32`) se genera en
 `AI/` mediante X-CUBE-AI / STM32Cube.AI Studio, que expone la API `stai`
 (`AI/Middlewares/Inc/stai.h`, `AI/Generated/Inc/network.h`) y un fichero de
 arranque (`AI/App/Src/app_x-cube-ai.c`) con `STM32CubeAI_Studio_AI_Init()`

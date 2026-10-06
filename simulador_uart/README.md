@@ -9,9 +9,10 @@ Vmp real de la curva y calcula el error.
 ## Estructura de archivos
 
 - **`lectura_escritura.py`** — lectura del dataset y escritura del log de test.
-- **`simulador_sensor.py`** — comunicación UART y los dos modos de ejecución.
+- **`simulador_sensor.py`** — comunicación UART y el modo de ejecución "Simulacion".
 - **`main_sensor.py`** — parámetros de configuración y punto de entrada.
-- **`visualizacion.py`** — genera un gráfico a partir de un log de test.
+- **`visualizacion.py`** — genera los gráficos de tensión y de potencia a
+  partir de un log de test.
 
 ## Protocolo UART
 
@@ -26,39 +27,40 @@ muestra procesada:
 V= %6.2f V | I= %5.2f A | Prediccion= %9.4f | t_inferencia= %6lu us\r\n
 ```
 
+## Carga del dataset
+
+`cargar_dataset` no carga los arrays V/I/P de las 500 curvas en memoria:
+los archivos `.dat` pueden pesar varios GB, y hacerlo así (con
+`json.load()` sobre el archivo entero) puede agotar la RAM disponible,
+ya que cada número ocupa varias veces más como objeto Python que como
+texto JSON. En su lugar, recorre el archivo una vez y construye un
+índice ligero por curva (id, irradiancias, temperatura, mpp, y la
+posición del bloque de esa curva en el archivo), sin tocar sus arrays.
+
+`cargar_curva(dataset, simulacion)` carga bajo demanda los arrays V/I/P
+de una única curva, leyendo solo su tramo del archivo (`seek` + lectura
+de ese rango + `json.loads()`). El simulador solo necesita una curva de
+trabajo a la vez, así que el pico de memoria depende del tamaño de una
+curva, no del dataset entero.
+
 ## Flujo del programa
 
 `main_sensor.py` es el punto de entrada. Al ejecutarse:
 
-1. Valida `MODO_SIM` (y `TIPO_MUESTREO` si `MODO_SIM == "Simulacion"`).
-2. Carga el dataset con `cargar_dataset(RUTA_DATOS)`.
+1. Valida `TIPO_MUESTREO`.
+2. Indexa el dataset con `cargar_dataset(RUTA_DATOS)` (ver más arriba).
 3. Abre el log de test con `abrir_log` y escribe la cabecera con los
    parámetros de la sesión (`escribir_cabecera_log`).
 4. Abre el puerto serie con `abrir_puerto`.
-5. Según `MODO_SIM`, llama a `ejecutar_simulacion` (modo "Consecutivo") o
-   a `ejecutar_modo_simulacion` (modo "Simulacion").
+5. Llama a `ejecutar_modo_simulacion`.
 6. Al terminar (o si hay un error, o se interrumpe con Ctrl+C), cierra el
    puerto y el log en el bloque `finally`.
 
 Cada muestra enviada se imprime por consola y se guarda en el log; al
-terminar cada curva o tramo de seguimiento se añade una línea de resumen,
-y al final del test un resumen global.
+terminar cada tramo de seguimiento se añade una línea de resumen, y al
+final del test un resumen global.
 
-## Modos de simulación (`MODO_SIM`)
-
-### `"Consecutivo"`
-
-Recorre curvas del dataset una a una. De cada curva se descartan los
-puntos de relleno (`V == -1.0`, usados por el generador del dataset para
-igualar la longitud de las curvas) y se escogen `N_PUNTOS_POR_CURVA`
-puntos al azar, repartidos por todo el rango de tensión, que se envían en
-orden decreciente de V — simulando un barrido Voc → Isc. `N_CURVAS` limita
-cuántas curvas del dataset se procesan (`None` = todas).
-
-Función principal: `ejecutar_simulacion`, que llama a `procesar_curva`
-por cada curva.
-
-### `"Simulacion"`
+## Modo de simulación
 
 Simula el seguimiento que haría un MPPT real, incluyendo cambios bruscos
 de irradiancia en mitad del seguimiento:
@@ -67,12 +69,13 @@ de irradiancia en mitad del seguimiento:
    del dataset (la "curva de trabajo").
 2. Cuando el micro devuelve su tensión predicha, se calcula una tensión
    objetivo según `TIPO_MUESTREO` (ver más abajo), y el siguiente punto
-   enviado es el de la curva de trabajo con la V más próxima a ese
-   objetivo (`punto_mas_cercano`).
+   enviado es el de la curva de trabajo interpolado linealmente en esa
+   tensión objetivo (`interpolar_punto`), no necesariamente una muestra
+   real del dataset.
 3. Cada `MUESTRAS_HASTA_CAMBIO` muestras se escoge al azar otra curva del
    dataset con irradiancias distintas, que pasa a ser la nueva curva de
    trabajo — simulando un cambio repentino de irradiancia. El seguimiento
-   no se pierde: el primer punto de la nueva curva es el más cercano a la
+   no se pierde: el primer punto de la nueva curva es el interpolado en la
    tensión objetivo acumulada hasta ese momento.
 4. El test termina al alcanzar `MUESTRAS_TOTALES` muestras en total
    (puede cortar un tramo a la mitad si no es múltiplo de
@@ -101,16 +104,24 @@ partir de la predicción del micro (`calcular_v_objetivo`):
 
 En modo `"Relativo"`, la tensión objetivo se acumula de forma **continua**
 de una muestra a otra: `calcular_v_objetivo` recibe siempre el valor
-objetivo anterior (no el punto ya discretizado que se acaba de enviar) y
-devuelve el nuevo objetivo a partir de él. `punto_mas_cercano` se usa solo
-para traducir ese objetivo continuo al punto real de la curva que hay que
-enviar. Esta distinción importa porque algunas curvas tienen huecos
-grandes entre puntos consecutivos (el "codo" que producen las
-transiciones de substring por diodo de bypass en el sombreado parcial):
-si el objetivo se recalculara cada vez a partir del punto ya redondeado,
-el paso `(V_predicho − V_actual) / MUESTRAS_HASTA_CAMBIO` podría no ser
-nunca suficiente para cruzar el hueco, y el seguimiento quedaría
-permanentemente fijado en el mismo punto.
+objetivo anterior (no el punto ya enviado) y devuelve el nuevo objetivo a
+partir de él.
+
+El punto que se envía en cada muestra se obtiene con `interpolar_punto`,
+que interpola linealmente (con `numpy.interp`) entre las dos muestras
+reales más próximas de la curva a la tensión objetivo — no hace falta que
+exista una muestra exacta en esa tensión, y si el objetivo cae fuera del
+rango de la curva se recorta al extremo correspondiente (Voc o Isc).
+Algunas curvas tienen huecos grandes entre puntos consecutivos (el "codo"
+que producen las transiciones de substring por diodo de bypass en el
+sombreado parcial), y antes de esta interpolación el punto enviado era
+simplemente el más cercano a la tensión objetivo (`punto_mas_cercano`):
+si el objetivo avanzaba dentro del hueco sin llegar a cruzar su punto
+medio, el vecino más cercano no cambiaba nunca y el seguimiento quedaba
+permanentemente fijado en el mismo punto. Con interpolación esto ya no
+puede ocurrir — el punto enviado es la propia tensión objetivo (recortada
+al rango de la curva), así que avanza en cada muestra con independencia
+de lo separadas que estén las muestras reales del dataset.
 
 Común a ambos modos: `SEMILLA_ALEATORIA` fija la aleatoriedad (curva/punto
 iniciales, cambios de curva, selección de puntos) para que el test sea
@@ -120,8 +131,12 @@ reproducible; `None` hace que cada ejecución sea distinta.
 
 ### `lectura_escritura.py`
 
-- **`cargar_dataset(ruta_datos)`** — carga el dataset JSON de curvas I-V.
-- **`listar_simulaciones(dataset)`** — devuelve la lista de curvas.
+- **`cargar_dataset(ruta_datos)`** — indexa el dataset JSON de curvas I-V
+  sin cargar los arrays V/I/P (ver "Carga del dataset" más arriba).
+- **`cargar_curva(dataset, simulacion)`** — carga bajo demanda los arrays
+  V/I/P de una curva indexada.
+- **`listar_simulaciones(dataset)`** — devuelve la lista de curvas
+  indexadas (metadatos ligeros, sin V/I/P).
 - **`metadata_dataset(dataset)`** — devuelve el bloque de metadata.
 - **`ruta_log(directorio_logs, id_test)`** — construye la ruta de un log.
 - **`abrir_log(directorio_logs, id_test)`** — crea el directorio de logs
@@ -159,26 +174,23 @@ Envío y recepción:
 Selección de puntos y cálculo de error:
 
 - **`puntos_validos(curva)`** — puntos (V, I) de una curva sin relleno.
-- **`seleccionar_puntos_aleatorios(curva, n_puntos, rng)`** — selección
-  aleatoria de puntos para el modo "Consecutivo".
 - **`calcular_error(prediccion_vmp, vmp_real)`** — error absoluto/relativo.
-- **`punto_mas_cercano(puntos, v_objetivo)`** — punto con la V más
-  próxima a un objetivo dado.
+- **`preparar_interpolacion(puntos)`** — ordena los puntos (V, I) de una
+  curva por V ascendente y los devuelve como arrays de numpy, listos para
+  `interpolar_punto`.
+- **`interpolar_punto(v_arr, i_arr, v_objetivo)`** — punto (V, I)
+  interpolado linealmente en v_objetivo, recortado al rango de la curva.
 - **`calcular_v_objetivo(tipo_muestreo, v_actual, v_predicho, muestras_hasta_cambio)`**
   — siguiente tensión objetivo, según `TIPO_MUESTREO`.
 
 Ejecución:
 
-- **`procesar_curva(...)`** — procesa una curva completa en modo
-  "Consecutivo".
-- **`ejecutar_simulacion(...)`** — recorre todas las curvas configuradas
-  en modo "Consecutivo".
 - **`_elegir_curva_distinta(simulaciones, curva_actual, rng)`** — escoge
   la siguiente curva de trabajo con irradiancias distintas.
 - **`_procesar_segmento_simulacion(...)`** — procesa un tramo de
-  seguimiento sobre una curva de trabajo en modo "Simulacion".
-- **`ejecutar_modo_simulacion(...)`** — orquesta el modo "Simulacion"
-  completo, incluyendo los cambios de curva de trabajo.
+  seguimiento sobre una curva de trabajo.
+- **`ejecutar_modo_simulacion(...)`** — orquesta la simulación completa,
+  incluyendo los cambios de curva de trabajo.
 - **`_escribir_resumen_global(fh_log, resumenes, duracion_s)`** — escribe
   el resumen global del test.
 
@@ -190,13 +202,19 @@ Ejecución:
 
 ### `visualizacion.py`
 
-- **`ruta_log` / `ruta_grafico`** — construyen las rutas de entrada/salida.
+- **`ruta_log` / `ruta_grafico` / `ruta_grafico_potencia`** — construyen
+  las rutas de entrada/salida.
 - **`leer_muestras_log(ruta)`** — parsea el log y devuelve la lista de
-  `Muestra` (una por línea de muestra con predicción).
+  `Muestra` (una por línea de muestra con predicción); cada `Muestra`
+  incluye `potencia_entregada` (= `v × i` del punto de trabajo enviado),
+  calculada al vuelo a partir de los V/I ya logueados.
 - **`generar_grafico(muestras, id_test, ruta_salida)`** — genera el PNG
   con dos paneles: Vmp real vs. predicho, y error absoluto, por muestra.
+- **`generar_grafico_potencia(muestras, id_test, ruta_salida)`** — genera
+  el PNG con dos paneles: Pmax real vs. potencia entregada, y error
+  absoluto, por muestra. Misma estructura y paleta que `generar_grafico`.
 - **`main()`** — resuelve el ID de test (argumento de línea de comandos o
-  `ID_TEST`), lee el log y genera el gráfico.
+  `ID_TEST`), lee el log y genera ambos gráficos.
 
 ## Uso
 
@@ -207,8 +225,8 @@ Ejecución:
    ```
 
 2. Edita los parámetros al principio de `main_sensor.py` (puerto serie,
-   baudios, `ID_DATOS`, ID de test, `MODO_SIM` y los parámetros del modo
-   elegido).
+   baudios, `ID_DATOS`, ID de test, `MUESTRAS_HASTA_CAMBIO`,
+   `MUESTRAS_TOTALES` y `TIPO_MUESTREO`).
 
 3. Ejecuta:
 
@@ -216,21 +234,27 @@ Ejecución:
    python main_sensor.py
    ```
 
-4. Tras un test, genera el gráfico:
+4. Tras un test, genera los gráficos (tensión y potencia):
 
    ```bash
    python visualizacion.py           # usa el ID_TEST definido en visualizacion.py
    python visualizacion.py 003       # o bien pasa el ID como argumento
    ```
 
+   Guarda `graficos/grafico_{ID}.png` (Vmp real vs. predicho) y
+   `graficos/grafico_potencia_{ID}.png` (Pmax real vs. potencia
+   entregada).
+
 ## Notas
 
+- Cada línea de muestra en el log añade a la respuesta cruda del micro el
+  `Vmp_real` y `Pmax_real` de la curva de trabajo y el error calculado
+  (`Vmp_real=... | Pmax_real=... W | Error=...`); `visualizacion.py` los
+  parsea junto con `V`/`I` para generar ambos gráficos.
 - Si no llega respuesta del microcontrolador dentro de
   `TIMEOUT_RESPUESTA_S`, el punto se reintenta hasta
   `REINTENTOS_POR_TIMEOUT` veces; si sigue sin haber respuesta, se marca
   como "SIN RESPUESTA" en el log y se continúa con el siguiente punto.
-- `N_CURVAS = None` usa todas las curvas del dataset; un entero limita el
-  test a las primeras N.
 - El dataset se espera en `datos/sim_{ID_DATOS}.dat`, en formato JSON, con
   una clave `simulaciones` (lista de curvas con `id`,
   `irradiancias_substrings_Wm2`, `mpp` y `curva`).

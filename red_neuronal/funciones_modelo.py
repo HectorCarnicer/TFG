@@ -1,21 +1,24 @@
 """
 funciones_modelo.py
 ===================
-Creacion, entrenamiento, prediccion y evaluacion de la red que estima Vmp
-a partir de un punto de operacion (V, I) del panel.
+Creacion, entrenamiento, prediccion y evaluacion de la red que estima la
+tension de maxima potencia (Vmp) a partir de una ventana de n puntos [V, I]
+(aplanada a 2*n valores).
 
 Arquitectura por defecto:
-    (V, I) -> Normalizacion -> 5 x Dense(64, sigmoid) -> Dense(1)
-           -> Desnormalizacion -> Vmp [V]
+    Entrada (V_1,I_1,...,V_n,I_n) -> Normalizacion -> 5 x Dense(64, sigmoid)
+        -> Dense(1) -> Desnormalizacion -> Vmp [V]
 
-Normalizacion y desnormalizacion van dentro del modelo: el .tflite exportado
-acepta voltios/amperios en crudo y devuelve voltios directamente.
+Normalizacion y desnormalizacion van dentro del modelo: el .tflite acepta
+voltios y amperios en crudo y devuelve voltios. Detalles: README.md.
 """
 
 from __future__ import annotations
 
 import numpy as np
 import tensorflow as tf
+
+from muestreo_ventanas import construir_ventanas_curva
 
 OPTIMIZADORES = {
     "nadam": tf.keras.optimizers.Nadam,
@@ -26,7 +29,9 @@ OPTIMIZADORES = {
 }
 
 
-# --- Creacion del modelo --------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Creacion del modelo
+# ---------------------------------------------------------------------------
 def crear_modelo(n_entradas: int = 2,
                  n_capas: int = 5,
                  n_neuronas: int = 64,
@@ -40,14 +45,19 @@ def crear_modelo(n_entradas: int = 2,
                  verbose: bool = True) -> tf.keras.Model:
     """Construye y compila la red densa.
 
-    X_referencia / y_referencia son los datos de entrenamiento usados para
-    ajustar las capas de normalizacion/desnormalizacion; si no se pasan, la
-    entrada/salida no se escalan.
-
-    Devuelve el modelo compilado.
+    Entrada: n_entradas (2 * n_muestras); n_capas y n_neuronas (capas ocultas);
+        activacion; optimizador (clave de OPTIMIZADORES); learning_rate;
+        perdida; X_referencia / y_referencia (datos de ENTRENAMIENTO que fijan
+        media y desviacion de las capas de normalizacion y desnormalizacion; si
+        son None, esa capa no se anade); nombre del modelo; verbose (imprime
+        el resumen).
+    Salida: modelo Keras compilado (metrica MAE). Lanza ValueError si el
+        optimizador no existe.
+    Globales: ninguna (solo lee OPTIMIZADORES).
     """
-    entradas = tf.keras.Input(shape=(n_entradas,), name="V_I")
+    entradas = tf.keras.Input(shape=(n_entradas,), name="ventana_V_I")
 
+    # --- Normalizacion de la entrada (x - mu) / sigma ----------------------
     if X_referencia is not None:
         capa_norm = tf.keras.layers.Normalization(axis=-1, name="normalizacion")
         capa_norm.adapt(np.asarray(X_referencia, dtype=np.float32))
@@ -55,16 +65,19 @@ def crear_modelo(n_entradas: int = 2,
     else:
         x = entradas
 
+    # --- Capas ocultas ----------------------------------------------------
     for i in range(n_capas):
         x = tf.keras.layers.Dense(n_neuronas, activation=activacion,
                                   name=f"oculta_{i + 1}")(x)
 
+    # --- Salida -----------------------------------------------------------
     salida = tf.keras.layers.Dense(1, activation="linear", name="vmp_norm")(x)
 
     if y_referencia is not None:
         y_ref = np.asarray(y_referencia, dtype=np.float32)
         media = float(y_ref.mean())
         sigma = float(y_ref.std()) or 1.0
+        # Rescaling: y = x * sigma + media  (inversa de la normalizacion)
         salida = tf.keras.layers.Rescaling(scale=sigma, offset=media,
                                            name="vmp")(salida)
 
@@ -86,7 +99,9 @@ def crear_modelo(n_entradas: int = 2,
     return modelo
 
 
-# --- Entrenamiento --------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Entrenamiento
+# ---------------------------------------------------------------------------
 def entrenar_modelo(modelo: tf.keras.Model,
                     X_train, y_train,
                     X_val=None, y_val=None,
@@ -96,9 +111,15 @@ def entrenar_modelo(modelo: tf.keras.Model,
                     reducir_lr: bool = True,
                     semilla: int = 42,
                     verbose: int = 1):
-    """Entrena el modelo con early stopping y reduccion de learning rate opcionales.
+    """Entrena el modelo con parada temprana y reduccion del learning rate.
 
-    paciencia=0 desactiva el early stopping. Devuelve el historial de entrenamiento.
+    Entrada: modelo compilado; X_train, y_train; X_val, y_val (opcionales, si
+        faltan se monitoriza la perdida de entrenamiento); epocas maximas;
+        batch_size; paciencia (epocas sin mejora antes de parar, 0 = sin
+        parada temprana; con parada se restauran los mejores pesos);
+        reducir_lr (ReduceLROnPlateau, factor 0.5); semilla; verbose (0, 1, 2).
+    Salida: historial de Keras (History); los pesos de 'modelo' quedan entrenados.
+    Globales: fija la semilla global de Python, NumPy y TensorFlow.
     """
     tf.keras.utils.set_random_seed(semilla)
 
@@ -127,18 +148,30 @@ def entrenar_modelo(modelo: tf.keras.Model,
     return historial
 
 
-# --- Prediccion --------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Prediccion
+# ---------------------------------------------------------------------------
 def predecir(modelo: tf.keras.Model, X, batch_size: int = 1024) -> np.ndarray:
-    """Prediccion con el modelo Keras. Devuelve Vmp en voltios, shape (n, 1)."""
+    """Predice Vmp con el modelo Keras.
+
+    Entrada: modelo; X (ventanas, shape (n, 2*n_muestras) o una sola ventana);
+        batch_size.
+    Salida: array (n, 1) con Vmp en voltios.
+    Globales: ninguna.
+    """
     X = np.atleast_2d(np.asarray(X, dtype=np.float32))
     return modelo.predict(X, batch_size=batch_size, verbose=0).reshape(-1, 1)
 
 
 def predecir_tflite(interprete, X) -> np.ndarray:
-    """Prediccion con un interprete TFLite ya cargado; admite lotes.
+    """Predice Vmp con un interprete TFLite ya cargado.
 
-    Aplica automaticamente la cuantizacion de entrada/salida si el modelo
-    esta cuantizado a enteros. Devuelve Vmp, shape (n, 1).
+    Redimensiona el tensor de entrada al numero de ventanas y, si el modelo
+    esta cuantizado a enteros, aplica escala y punto cero a entrada y salida.
+
+    Entrada: interprete (ver cargar_modelo_tflite); X (ventanas, (n, 2*n_muestras)).
+    Salida: array (n, 1) con Vmp en voltios.
+    Globales: ninguna (cambia el tamano de entrada del interprete recibido).
     """
     X = np.atleast_2d(np.asarray(X, dtype=np.float32))
 
@@ -148,6 +181,7 @@ def predecir_tflite(interprete, X) -> np.ndarray:
     interprete.resize_tensor_input(detalles_entrada["index"], X.shape, strict=False)
     interprete.allocate_tensors()
 
+    # Cuantizacion de la entrada si procede
     entrada = X
     escala, cero = detalles_entrada["quantization"]
     if detalles_entrada["dtype"] != np.float32 and escala != 0:
@@ -164,9 +198,18 @@ def predecir_tflite(interprete, X) -> np.ndarray:
     return salida.reshape(-1, 1)
 
 
-# --- Evaluacion --------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Evaluacion
+# ---------------------------------------------------------------------------
 def evaluar(y_real, y_pred, etiqueta: str = "", verbose: bool = True) -> dict:
-    """Calcula MAE, RMSE, MAPE, error maximo y R2. Devuelve un dict con las metricas."""
+    """Calcula MAE, RMSE, MAPE, error maximo y R2 entre prediccion y valor real.
+
+    Entrada: y_real, y_pred (misma longitud, en voltios); etiqueta (texto de la
+        linea impresa); verbose (imprime las metricas).
+    Salida: dict con 'MAE [V]', 'RMSE [V]', 'MAPE [%]', 'Error max [V]' y 'R2'
+        (nan si y_real es constante).
+    Globales: ninguna.
+    """
     y_real = np.asarray(y_real, dtype=np.float64).reshape(-1)
     y_pred = np.asarray(y_pred, dtype=np.float64).reshape(-1)
     error = y_pred - y_real
@@ -189,18 +232,42 @@ def evaluar(y_real, y_pred, etiqueta: str = "", verbose: bool = True) -> dict:
     return metricas
 
 
-def predecir_vmp_curva(modelo, V, I, agregacion: str = "mediana",
-                       tflite: bool = False) -> float:
-    """Estima el Vmp de una curva completa evaluando el modelo en todos sus
-    puntos y agregando las predicciones.
+def predecir_vmp_curva(modelo, V, I, n_muestras: int, delta_v: float,
+                       ascendente: bool, agregacion: str = "mediana",
+                       tflite: bool = False, paso_fijo: bool = True,
+                       ventana: float | None = None,
+                       semilla: int | None = None) -> float:
+    """Estima el Vmp de una curva I-V completa agregando la prediccion de
+    todas sus ventanas validas.
 
-    agregacion : 'mediana' | 'media'.
-
-    Devuelve el Vmp estimado.
+    Entrada: modelo (Keras, o interprete TFLite si tflite=True); V, I (curva);
+        n_muestras, delta_v, ascendente, paso_fijo, ventana (definicion de la
+        ventana, igual que en entrenamiento); agregacion ('mediana' | 'media');
+        semilla (fija las tensiones aleatorias con paso_fijo=False; sin ella
+        cada llamada sortea ventanas distintas; se ignora con paso_fijo=True).
+    Salida: Vmp estimado [V] (float). Lanza ValueError si la curva no tiene
+        rango para ninguna ventana.
+    Globales: ninguna.
     """
     funcion = predecir_tflite if tflite else predecir
-    X = np.column_stack((np.asarray(V, dtype=np.float32),
-                         np.asarray(I, dtype=np.float32)))
+
+    V = np.asarray(V, dtype=np.float32)
+    I = np.asarray(I, dtype=np.float32)
+    orden = np.argsort(V)
+    V, I = V[orden], I[orden]
+
+    rng = np.random.default_rng(semilla) if semilla is not None else None
+    X, _ = construir_ventanas_curva(V, I, n_muestras, delta_v, ascendente,
+                                    n_ventanas=None, modo_muestreo="uniforme",
+                                    rng=rng, paso_fijo=paso_fijo, ventana=ventana)
+    if X.shape[0] == 0:
+        sentido = "ascendente" if ascendente else "descendente"
+        extension = (f"{n_muestras} muestras x {delta_v:.2f} V" if paso_fijo
+                    else f"{n_muestras} muestras dentro de {ventana:.2f} V")
+        raise ValueError(
+            f"La curva no tiene rango suficiente para una ventana de "
+            f"{extension} ({sentido}).")
+
     predicciones = funcion(modelo, X).reshape(-1)
     return float(np.median(predicciones) if agregacion == "mediana"
                  else np.mean(predicciones))

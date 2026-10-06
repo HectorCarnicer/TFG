@@ -1,10 +1,9 @@
 """
 simulador_sensor.py
 
-Comunicación UART con el microcontrolador y los dos modos de ejecución:
-
-  - ejecutar_simulacion       -> modo "Consecutivo"
-  - ejecutar_modo_simulacion  -> modo "Simulacion"
+Comunicación UART con el microcontrolador y el modo de ejecución
+"Simulacion" (ejecutar_modo_simulacion): seguimiento continuo del MPP con
+cambios de curva de trabajo.
 
 Formato de respuesta del microcontrolador tras cada muestra:
 
@@ -16,6 +15,8 @@ import re
 import struct
 import time
 
+import numpy as np
+
 try:
     import serial  # pyserial
 except ImportError as exc:  # pragma: no cover
@@ -23,7 +24,7 @@ except ImportError as exc:  # pragma: no cover
         "Falta la dependencia 'pyserial'. Instálala con: pip install pyserial"
     ) from exc
 
-from lectura_escritura import escribir_log
+from lectura_escritura import cargar_curva, escribir_log
 
 
 VALOR_RELLENO = -1.0  # marca los puntos de relleno al final de cada curva
@@ -156,20 +157,6 @@ def puntos_validos(curva):
     return [(v, i) for v, i in zip(V, I) if v != VALOR_RELLENO]
 
 
-def seleccionar_puntos_aleatorios(curva, n_puntos, rng):
-    """Escoge n_puntos puntos (V, I) al azar de la curva, sin reemplazo,
-    y los devuelve ordenados de mayor a menor tensión.
-    """
-    validos = puntos_validos(curva)
-    n = min(n_puntos, len(validos))
-    if n <= 0:
-        return []
-
-    muestra = rng.sample(validos, n)
-    muestra.sort(key=lambda par: par[0], reverse=True)
-    return muestra
-
-
 # ---------------------------------------------------------------------------
 # Cálculo de error
 # ---------------------------------------------------------------------------
@@ -181,9 +168,24 @@ def calcular_error(prediccion_vmp, vmp_real):
     return error_abs, error_rel_pct
 
 
-def punto_mas_cercano(puntos, v_objetivo):
-    """Devuelve el punto (V, I) de la lista con la V más cercana a v_objetivo."""
-    return min(puntos, key=lambda par: abs(par[0] - v_objetivo))
+def preparar_interpolacion(puntos):
+    """Ordena los puntos (V, I) de una curva por V ascendente, listos para
+    interpolar_punto(). Devuelve (V, I) como arrays de numpy.
+    """
+    V, I = zip(*sorted(puntos))
+    return np.asarray(V, dtype=float), np.asarray(I, dtype=float)
+
+
+def interpolar_punto(v_arr, i_arr, v_objetivo):
+    """Devuelve el punto (V, I) de la curva en v_objetivo, interpolado
+    linealmente entre las dos muestras reales más próximas (v_arr/i_arr,
+    de preparar_interpolacion) — no hace falta que exista una muestra
+    exacta en esa tensión. Si v_objetivo cae fuera del rango de la curva,
+    se recorta al extremo correspondiente (Voc o Isc).
+    """
+    v_recortado = float(np.clip(v_objetivo, v_arr[0], v_arr[-1]))
+    i_interp = float(np.interp(v_recortado, v_arr, i_arr))
+    return v_recortado, i_interp
 
 
 def calcular_v_objetivo(tipo_muestreo, v_actual, v_predicho, muestras_hasta_cambio):
@@ -216,142 +218,6 @@ def intentar_muestra(ser, v, i, reintentos_timeout):
     return None
 
 
-# ---------------------------------------------------------------------------
-# Procesado de una curva completa (modo "Consecutivo")
-# ---------------------------------------------------------------------------
-
-def procesar_curva(
-    ser,
-    fh_log,
-    simulacion,
-    n_puntos,
-    rng,
-    reintentos_timeout=1,
-    retardo_entre_puntos_s=0.0,
-):
-    """Envía n_puntos puntos aleatorios de una curva, calcula el error de
-    cada respuesta frente al Vmp real y loguea cada muestra.
-
-    Devuelve el ResumenCurva de la curva procesada.
-    """
-    id_curva = simulacion["id"]
-    vmp_real = simulacion["mpp"]["Vmp [V]"]
-    curva = simulacion["curva"]
-
-    puntos = seleccionar_puntos_aleatorios(curva, n_puntos, rng)
-
-    errores_abs = []
-    n_ok = 0
-    n_timeouts = 0
-    ultimo_error_abs = float("nan")
-    ultimo_error_rel = float("nan")
-
-    for k, (v, i) in enumerate(puntos, start=1):
-        respuesta = intentar_muestra(ser, v, i, reintentos_timeout)
-
-        prefijo = f"[Curva {id_curva:03d}] Punto {k:3d}/{len(puntos)}"
-
-        if respuesta is None:
-            n_timeouts += 1
-            escribir_log(
-                fh_log,
-                f"{prefijo} -> V={v:6.2f} V | I={i:5.2f} A | "
-                f"SIN RESPUESTA del microcontrolador (timeout)",
-            )
-            if retardo_entre_puntos_s > 0:
-                time.sleep(retardo_entre_puntos_s)
-            continue
-
-        n_ok += 1
-        error_abs, error_rel_pct = calcular_error(respuesta.prediccion_vmp, vmp_real)
-        errores_abs.append(abs(error_abs))
-        ultimo_error_abs = error_abs
-        ultimo_error_rel = error_rel_pct
-
-        linea_completa = (
-            f"{prefijo} -> V={respuesta.v_eco:6.2f} V | I={respuesta.i_eco:5.2f} A | "
-            f"Prediccion={respuesta.prediccion_vmp:9.4f} | "
-            f"t_inferencia={respuesta.t_inferencia_us:6d} us | "
-            f"Vmp_real={vmp_real:6.2f} V | "
-            f"Error={error_abs:+7.4f} V ({error_rel_pct:+6.2f} %)"
-        )
-        escribir_log(fh_log, linea_completa)
-
-        if retardo_entre_puntos_s > 0:
-            time.sleep(retardo_entre_puntos_s)
-
-    error_medio_abs = sum(errores_abs) / len(errores_abs) if errores_abs else float("nan")
-
-    resumen = ResumenCurva(
-        id_curva=id_curva,
-        n_puntos=len(puntos),
-        vmp_real=vmp_real,
-        error_medio_abs=error_medio_abs,
-        error_final_abs=ultimo_error_abs,
-        error_final_rel_pct=ultimo_error_rel,
-        n_respuestas_ok=n_ok,
-        n_timeouts=n_timeouts,
-    )
-
-    escribir_log(
-        fh_log,
-        (
-            f"--- Resumen curva {id_curva:03d}: Vmp_real={resumen.vmp_real:6.2f} V | "
-            f"error medio |E|={resumen.error_medio_abs:7.4f} V | "
-            f"error última muestra={resumen.error_final_abs:+7.4f} V "
-            f"({resumen.error_final_rel_pct:+6.2f} %) | "
-            f"OK={resumen.n_respuestas_ok} timeouts={resumen.n_timeouts} ---"
-        ),
-    )
-
-    return resumen
-
-
-# ---------------------------------------------------------------------------
-# Simulación completa (todas las curvas configuradas)
-# ---------------------------------------------------------------------------
-
-def ejecutar_simulacion(
-    ser,
-    fh_log,
-    dataset,
-    n_curvas,
-    n_puntos_por_curva,
-    semilla=None,
-    reintentos_timeout=1,
-    retardo_entre_puntos_s=0.0,
-):
-    """Recorre n_curvas curvas del dataset (todas si es None), enviando
-    n_puntos_por_curva puntos aleatorios de cada una.
-
-    Devuelve la lista de ResumenCurva, una por curva procesada.
-    """
-    rng = random.Random(semilla)
-    simulaciones = dataset["simulaciones"]
-    if n_curvas is not None:
-        simulaciones = simulaciones[:n_curvas]
-
-    resumenes = []
-    t_inicio = time.time()
-
-    for simulacion in simulaciones:
-        resumen = procesar_curva(
-            ser=ser,
-            fh_log=fh_log,
-            simulacion=simulacion,
-            n_puntos=n_puntos_por_curva,
-            rng=rng,
-            reintentos_timeout=reintentos_timeout,
-            retardo_entre_puntos_s=retardo_entre_puntos_s,
-        )
-        resumenes.append(resumen)
-
-    duracion_s = time.time() - t_inicio
-    _escribir_resumen_global(fh_log, resumenes, duracion_s)
-
-    return resumenes
-
-
 def _elegir_curva_distinta(simulaciones, curva_actual, rng):
     """Escoge al azar otra curva del dataset con irradiancias distintas a
     curva_actual. Si no hay ninguna, escoge cualquiera del dataset.
@@ -369,7 +235,8 @@ def _procesar_segmento_simulacion(
     ser,
     fh_log,
     curva,
-    puntos_curva,
+    v_arr,
+    i_arr,
     v_inicial,
     i_inicial,
     muestras_hasta_cambio,
@@ -380,16 +247,18 @@ def _procesar_segmento_simulacion(
     retardo_entre_puntos_s,
 ):
     """Procesa un tramo de seguimiento sobre una curva de trabajo: envía
-    v_inicial/i_inicial y cada punto siguiente es el más cercano a una
-    tensión objetivo continua, recalculada según tipo_muestreo. Termina a
-    las muestras_hasta_cambio muestras del tramo, o antes si se alcanza
-    muestras_totales del test completo.
+    v_inicial/i_inicial y cada punto siguiente es el interpolado (v_arr/
+    i_arr, de preparar_interpolacion) en una tensión objetivo continua,
+    recalculada según tipo_muestreo. Termina a las muestras_hasta_cambio
+    muestras del tramo, o antes si se alcanza muestras_totales del test
+    completo.
 
     Devuelve (ResumenCurva del tramo, última tensión objetivo,
     muestras_enviadas actualizado).
     """
     id_curva = curva["id"]
     vmp_real = curva["mpp"]["Vmp [V]"]
+    pmax_real = curva["mpp"]["Pmax [W]"]
 
     v, i = v_inicial, i_inicial
     v_objetivo = v_inicial  # tensión objetivo continua, no discretizada
@@ -428,7 +297,7 @@ def _procesar_segmento_simulacion(
             f"{prefijo} -> V={respuesta.v_eco:6.2f} V | I={respuesta.i_eco:5.2f} A | "
             f"Prediccion={respuesta.prediccion_vmp:9.4f} | "
             f"t_inferencia={respuesta.t_inferencia_us:6d} us | "
-            f"Vmp_real={vmp_real:6.2f} V | "
+            f"Vmp_real={vmp_real:6.2f} V | Pmax_real={pmax_real:8.4f} W | "
             f"Error={error_abs:+7.4f} V ({error_rel_pct:+6.2f} %)"
         )
         escribir_log(fh_log, linea_completa)
@@ -436,7 +305,7 @@ def _procesar_segmento_simulacion(
         v_objetivo = calcular_v_objetivo(
             tipo_muestreo, v_objetivo, respuesta.prediccion_vmp, muestras_hasta_cambio
         )
-        v, i = punto_mas_cercano(puntos_curva, v_objetivo)
+        v, i = interpolar_punto(v_arr, i_arr, v_objetivo)
 
         if retardo_entre_puntos_s > 0:
             time.sleep(retardo_entre_puntos_s)
@@ -507,7 +376,8 @@ def ejecutar_modo_simulacion(
     muestras_enviadas = 0
 
     curva_actual = rng.choice(simulaciones)
-    puntos_curva = puntos_validos(curva_actual["curva"])
+    puntos_curva = puntos_validos(cargar_curva(dataset, curva_actual)["curva"])
+    v_arr, i_arr = preparar_interpolacion(puntos_curva)
     v_actual, i_actual = rng.choice(puntos_curva)
 
     escribir_log(
@@ -522,7 +392,8 @@ def ejecutar_modo_simulacion(
             ser=ser,
             fh_log=fh_log,
             curva=curva_actual,
-            puntos_curva=puntos_curva,
+            v_arr=v_arr,
+            i_arr=i_arr,
             v_inicial=v_actual,
             i_inicial=i_actual,
             muestras_hasta_cambio=muestras_hasta_cambio,
@@ -538,8 +409,9 @@ def ejecutar_modo_simulacion(
             break
 
         curva_actual = _elegir_curva_distinta(simulaciones, curva_actual, rng)
-        puntos_curva = puntos_validos(curva_actual["curva"])
-        v_actual, i_actual = punto_mas_cercano(puntos_curva, v_objetivo_final)
+        puntos_curva = puntos_validos(cargar_curva(dataset, curva_actual)["curva"])
+        v_arr, i_arr = preparar_interpolacion(puntos_curva)
+        v_actual, i_actual = interpolar_punto(v_arr, i_arr, v_objetivo_final)
 
         escribir_log(
             fh_log,

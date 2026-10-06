@@ -4,3 +4,8 @@
 # Resultados regenerables del entrenamiento y del diagnóstico
 figuras/
 comparaciones/
+
+# Modelos: solo se versiona el que lleva el firmware de esta versión.
+# El resto se archiva en el repositorio de resultados.
+/modelos/*
+!/modelos/mpp_v3/

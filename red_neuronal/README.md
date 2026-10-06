@@ -1,22 +1,21 @@
-# Predictor de MPP con red neuronal (v1)
+# Predictor de MPP con red neuronal (V2: ventana de muestras)
 
 Predictor de la tensión de máxima potencia (Vmp) de un panel fotovoltaico
-mediante una red neuronal densa, a partir de un único punto de operación
-(V, I) de su curva I-V. Pensado para ejecutarse en un microcontrolador (ST)
-como parte de un controlador MPPT.
-
-Esta es la primera versión del proyecto: entrada de un solo punto (V, I).
-No incluye todavía el muestreo de varios puntos de la curva ni la gestión
-de múltiples experimentos/modelos.
+mediante una red neuronal densa de regresión. La entrada es una **ventana de
+varias muestras (V, I)** de la curva I-V, como las que iría tomando un
+algoritmo Perturb & Observe (P&O) en tiempo real. Pensado para ejecutarse en un
+microcontrolador (ST) como parte de un controlador MPPT: el modelo se exporta a
+TensorFlow Lite y acepta voltios y amperios en crudo.
 
 ## Origen de los datos
 
-El fichero `sim_1.dat` contiene simulaciones de un panel fotovoltaico de 2
-substrings en serie (18 células cada uno, con diodo de bypass), generadas
-con un modelo de diodo único ajustado al datasheet del panel. Cada
-simulación aplica una irradiancia distinta a cada substring (sombreado
-parcial independiente) y guarda la curva I-V resultante junto con su punto
-de máxima potencia (Vmp, Imp, Pmax). El JSON tiene la forma:
+Los ficheros `datos/sim_{ID}.dat` contienen simulaciones de paneles
+fotovoltaicos con substrings en serie y diodo de bypass, generadas con un
+modelo de diodo único ajustado al datasheet del panel. Cada simulación aplica
+una irradiancia distinta a cada substring (sombreado parcial independiente) y
+guarda la curva I-V resultante junto con su punto de máxima potencia (Vmp,
+Imp, Pmax). Cada fichero puede corresponder a un panel o a unas condiciones
+distintas. El JSON tiene la forma:
 
 ```json
 {
@@ -33,179 +32,215 @@ de máxima potencia (Vmp, Imp, Pmax). El JSON tiene la forma:
 }
 ```
 
-## Idea del modelo y limitación conocida
+Las claves se buscan por subcadena (`"vmp"`, `"pmax"`, `"imp"`), de modo que
+no importan las unidades ni las mayúsculas del nombre.
 
-La red recibe un único punto de operación (V, I) y predice el Vmp de la
-curva a la que pertenece ese punto. Esto asume implícitamente que un punto
-(V, I) contiene suficiente información para determinar el Vmp de su curva.
+## Idea del modelo
 
-Con sombreado parcial esto no siempre es cierto: cuando un substring se
-satura y su diodo de bypass entra en conducción, la curva I-V desarrolla un
-escalón, y curvas con Vmp muy distintos pueden pasar por el mismo punto (V,
-I) antes o después de ese escalón. En esos casos ningún modelo puede
-distinguir a qué curva pertenece un punto aislado, y la predicción con
-menor error posible es la media de los Vmp compatibles con ese punto.
-`diagnostico_datos.py` cuantifica cuánto limita esto al modelo antes de
-entrenar (ver más abajo).
+La red recibe una ventana de `n` muestras `[[V_1,I_1], ..., [V_n,I_n]]`
+(aplanada a un vector de `2n` valores) y predice el Vmp de la curva de la que
+proceden. Un único punto (V, I) no basta para determinarlo: con sombreado
+parcial, cuando un substring se satura y su diodo de bypass entra en
+conducción, la curva desarrolla un escalón y curvas con Vmp muy distintos
+pueden pasar por el mismo punto antes o después de él. Una ventana de varios
+puntos aporta la forma local de la curva, lo que permite distinguir esos casos.
+
+### Construcción de las ventanas
+
+`muestreo_ventanas.py` genera las ventanas a partir de una curva ordenada por
+tensión. Hay dos modos (parámetro `PASO_FIJO`):
+
+- **Paso fijo** (`PASO_FIJO=True`): desde un punto de arranque se toman `n`
+  muestras separadas `DELTA_V` voltios, como un P&O de paso fijo.
+- **Tensión aleatoria** (`PASO_FIJO=False`): las `n` muestras se sortean con
+  tensión uniforme dentro de un rango de anchura `VENTANA` desde el arranque
+  y se ordenan de menor a mayor (P&O de paso variable, o robustez frente a
+  desviaciones del paso real). `DELTA_V` se ignora en este modo.
+
+El sentido del barrido es creciente o decreciente en tensión (`ASCENDENTE`).
+Un punto de la curva es un arranque válido solo si la ventana completa cabe
+dentro del rango `[V.min(), V.max()]` de la curva, para no extrapolar.
+`N_VENTANAS_CURVA` limita cuántos arranques se toman por curva (`None` = todos
+los válidos); si es menor que los disponibles, `MODO_MUESTREO` decide cómo se
+reparten (`'uniforme'` a lo largo de la curva o `'aleatorio'` sin reemplazo).
+Las curvas sin rango suficiente para ninguna ventana se descartan y se
+cuentan en el resumen.
+
+**Interpolación.** Las corrientes de cada muestra se obtienen por
+interpolación lineal sobre la curva simulada. Los puntos de las simulaciones
+no están repartidos uniformemente en tensión (hay tramos con huecos de más de
+1 V entre puntos consecutivos), de modo que la fidelidad de una muestra
+depende de la densidad de la simulación en esa zona; en los tramos más
+dispersos la ventana puede suavizar detalles finos que un P&O real sí mediría.
+
+## Limitación conocida
+
+Si una ventana es compatible con curvas de Vmp distintos, la regresión con
+pérdida MSE converge a la media condicional de esos Vmp: predice una tensión
+intermedia que no coincide con ninguno de los picos. Por eso la estimación
+por curva (ver más abajo) agrega las predicciones de todas sus ventanas con la
+mediana, y las métricas punto a punto son más pesimistas que las métricas por
+curva.
 
 ## Estructura del proyecto
 
 ```
 rn_main.py              script principal: entrena y exporta el modelo
+muestreo_ventanas.py    construcción de las ventanas [V,I] de una curva
 lectura_escritura.py    lectura de datos, partición del dataset, E/S de TFLite
 funciones_modelo.py     definición de la red, entrenamiento, predicción, métricas
-diagnostico_datos.py    diagnóstico de cuánta información hay en (V, I) antes de entrenar
-sim_1.dat               datos de simulación (curvas I-V)
-modelos/                salida de rn_main.py: modelo .tflite, resumen JSON y figuras
+diagnostico_datos.py    evalúa un modelo ya exportado sobre su propio conjunto de test
+comparador_rn.py        compara varios modelos entrenados (tabla y gráficas)
+datos/                  simulaciones (sim_{ID}.dat)
+modelos/                salida: modelos/mpp_v{ID}/ (.tflite, resumen JSON y figuras)
 ```
 
 ## Flujo de `rn_main.py`
 
-1. **Lectura de datos.** `leer_datos_entrenamiento` (en `lectura_escritura.py`)
-   lee `sim_1.dat` y construye el dataset: por cada curva se toman
-   `N_PUNTOS_CURVA` puntos (V, I) —o todos si es `None`— y a cada uno se le
-   asigna como etiqueta el Vmp de esa curva. Devuelve `X` (puntos V,I), `y`
-   (Vmp), `grupos` (a qué curva pertenece cada punto) e `info` (metadata,
-   curvas completas y estadísticas del dataset).
+1. **Lectura de datos.** `leer_datos_entrenamiento` lee los ficheros
+   `datos/sim_{ID}.dat` de `IDS_DATOS` y los combina en un único dataset. Por
+   cada curva construye sus ventanas y asigna a cada una como etiqueta el Vmp
+   de esa curva. Devuelve `X` (ventanas), `y` (Vmp), `grupos` (curva de origen
+   de cada ventana) e `info` (metadata, curvas completas y estadísticas).
+
+   Cada fichero numera sus curvas de forma independiente (normalmente
+   `0..N-1`), así que los ids no serían únicos entre ficheros. Por eso cada
+   curva recibe un id global `indice_fichero * OFFSET_ID_DATOS + id_original`;
+   el id original y el fichero de origen se conservan en `info['curvas']`
+   (`id_original`, `id_dato`).
 
 2. **Partición del dataset.** `dividir_datos` separa train/val/test
-   repartiendo **curvas completas**, no puntos sueltos: todos los puntos de
-   una misma curva caen en el mismo conjunto. Si se repartieran puntos al
-   azar, puntos de la misma curva (muy correlacionados, con la misma
-   etiqueta) acabarían a ambos lados del split y las métricas de test
-   saldrían artificialmente optimistas.
+   repartiendo **curvas completas**, no ventanas sueltas. Las ventanas de una
+   misma curva comparten etiqueta y están muy correlacionadas: si se
+   repartieran al azar acabarían a ambos lados de la partición y las métricas
+   de test saldrían optimistas.
 
-3. **Creación del modelo.** `crear_modelo` (en `funciones_modelo.py`)
-   construye una red densa:
+3. **Creación del modelo.** `crear_modelo` construye la red densa:
 
    ```
-   (V, I) -> Normalización -> 5 x Dense(64, sigmoid) -> Dense(1)
-          -> Desnormalización -> Vmp [V]
+   Entrada (V_1,I_1,...,V_n,I_n) -> Normalización -> 5 x Dense(64, sigmoid)
+              -> Dense(1) -> Desnormalización -> Vmp [V]
    ```
 
-   Las capas de normalización (a la entrada) y desnormalización (a la
-   salida) se ajustan con la media/desviación típica del conjunto de
-   entrenamiento y se incluyen **dentro** del propio modelo. Así el
-   `.tflite` exportado acepta voltios/amperios en crudo y devuelve voltios
-   directamente, sin tener que replicar ningún escalado en el
-   microcontrolador. Es además necesario porque las activaciones sigmoide
-   se saturan si reciben entradas lejos de cero.
+   Las capas de normalización (entrada) y desnormalización (salida) se
+   ajustan con la media y la desviación típica del conjunto de entrenamiento y
+   van **dentro** del propio modelo. Así el `.tflite` acepta voltios y amperios
+   en crudo y devuelve voltios, sin replicar ningún escalado en el
+   microcontrolador. Además es necesario con activaciones sigmoide, que se
+   saturan si reciben valores lejos de cero.
 
-4. **Entrenamiento.** `entrenar_modelo` entrena con `EarlyStopping` (para
-   cuando la pérdida de validación deja de mejorar) y `ReduceLROnPlateau`
-   (baja el learning rate si se estanca). Semilla fija para reproducibilidad.
+4. **Entrenamiento.** `entrenar_modelo` usa `EarlyStopping` (para cuando la
+   pérdida de validación deja de mejorar y restaura los mejores pesos) y
+   `ReduceLROnPlateau` (reduce el learning rate a la mitad si se estanca),
+   con semilla fija para reproducibilidad. `PACIENCIA=0` desactiva la parada
+   temprana.
 
-5. **Evaluación.** Se calculan métricas (MAE, RMSE, MAPE, error máximo, R²)
-   de dos formas: punto a punto sobre el conjunto de test, y por curva
-   completa (`predecir_vmp_curva` evalúa el modelo en todos los puntos
-   disponibles de cada curva de test y agrega las predicciones con la
-   mediana, más robusta que la media frente a puntos poco informativos
-   como el cortocircuito o el circuito abierto).
+5. **Evaluación.** Se calculan MAE, RMSE, MAPE, error máximo y R² de dos
+   formas: punto a punto sobre las ventanas de test, y **por curva**
+   (`predecir_vmp_curva` construye todas las ventanas válidas de cada curva de
+   test, predice cada una y agrega las predicciones con la mediana o la media,
+   según `AGREGACION_CURVA`). La mediana es más robusta que la media frente a
+   ventanas poco informativas, como las de los extremos de la curva (cerca del
+   cortocircuito o del circuito abierto). Con `PASO_FIJO=False`, la semilla fija
+   las tensiones aleatorias de las ventanas, de modo que la estimación es
+   reproducible entre ejecuciones.
 
 6. **Exportación a TensorFlow Lite.** `exportar_tflite` convierte el modelo
    Keras a `.tflite`. Si la conversión directa falla (ocurre con Keras 3 en
-   algunos casos), se reintenta pasando por un `SavedModel` intermedio.
-   Admite cuantización opcional a enteros (`CUANTIZAR=True`), calibrada con
-   una muestra de datos reales de entrenamiento. Después se recarga el
-   `.tflite` y se compara su predicción contra el modelo Keras para
-   verificar que la conversión no introduce error apreciable.
+   algunos casos), se repite pasando por un `SavedModel` temporal. Admite
+   cuantización a enteros (`CUANTIZAR=True`), calibrada con una muestra de
+   ventanas reales de entrenamiento. Después se recarga el `.tflite` y se
+   compara su predicción con la del modelo Keras (`VERIFICAR_TFLITE`).
 
-7. **Resumen y figuras.** Se guarda un JSON (`mpp_v1_resumen.json`) con la
-   configuración de datos, arquitectura, entrenamiento y métricas del
-   modelo, y dos figuras: evolución del entrenamiento (pérdida, MAE,
-   dispersión predicción-real, histograma del error) y una curva de test
-   de ejemplo con el Vmp real y el predicho superpuestos.
+7. **Resumen y figuras.** Se guarda `mpp_v{ID}_resumen.json` con los datos
+   usados (ficheros, curvas, ventana, metadata), la partición, la
+   arquitectura, el entrenamiento (épocas ejecutadas, batch, paciencia,
+   semilla) y las métricas (punto a punto, por curva y del `.tflite`). También
+   se guardan dos figuras: la evolución del entrenamiento (pérdida, MAE,
+   dispersión predicción-real e histograma del error) y una curva de test de
+   ejemplo con el Vmp real y el predicho. Todo va a `modelos/mpp_v{ID}/`, que se
+   reescribe si se repite el mismo `ID`.
 
-## `diagnostico_datos.py`
+## Herramientas de evaluación
 
-Herramienta de diagnóstico **independiente del modelo entrenado**: analiza
-solo los datos para responder una pregunta previa al entrenamiento —¿cuánta
-información hay en un punto (V, I) sobre el Vmp de su curva?
+- **`diagnostico_datos.py`** — evalúa un modelo ya exportado sobre su propio
+  conjunto de test, usando solo el `.tflite` y el resumen. Lee del resumen la
+  ventana, los ficheros de datos, la partición y la semilla, reconstruye
+  exactamente el mismo test y ejecuta el `.tflite` sobre él, de modo que sirve
+  también para comprobar que el modelo exportado reproduce las métricas de su
+  resumen. Si el resumen no registra algún campo, usa el valor por defecto de
+  las constantes del fichero y avisa por consola. Genera la figura de
+  evaluación (dispersión e histograma del error, punto a punto y por curva) y
+  las curvas de test con mayor error.
+- **`comparador_rn.py`** — compara varios modelos (`IDS`; `N_MODELOS` debe
+  coincidir con `len(IDS)`): tabla por consola con ventana, ficheros de datos,
+  R² y RMSE punto a punto y por curva, y gráficas con R² y RMSE por modelo y la
+  distribución de Vmp del test. Cada modelo se evalúa con su propia
+  configuración, de modo que pueden compararse modelos entrenados con ventanas
+  o datos distintos. Los IDs sin modelo se avisan y se omiten (se necesitan al
+  menos dos válidos). Los resultados van a
+  `modelos/comparaciones/cmp_{ID1}-{ID2}-…/` y se reescriben si se repite la
+  comparación.
 
-- **Distribución de Vmp.** Histograma por consola; permite detectar
-  agrupaciones o bimodalidad en los datos (indicio de que hay varios
-  "regímenes" de curvas, por ejemplo con y sin bypass activo).
+## Funciones por módulo
 
-- **Techo de R² alcanzable.** Se estima
-  `R2_max = 1 - E[Var(Vmp | V, I)] / Var(Vmp)`
-  mediante vecinos próximos en el plano (V, I) normalizado: para una
-  muestra de puntos de consulta se buscan sus vecinos más cercanos
-  pertenecientes a **otras** curvas (se excluyen siempre los vecinos de la
-  propia curva, para no subestimar la varianza) y se calcula la varianza de
-  sus Vmp. Promediando esa varianza condicional sobre todas las consultas
-  se obtiene `E[Var(Vmp | V, I)]`, y de ahí el techo de R² que **cualquier**
-  modelo —no solo esta red— podría alcanzar con esa entrada. Es un límite
-  teórico, no depende de los pesos de ningún modelo entrenado:
-  - R²_max > 0.9: hay información suficiente en (V, I); si el modelo
-    entrenado falla, el problema es de entrenamiento (arquitectura,
-    learning rate, épocas, normalización).
-  - R²_max < 0.5: el problema está mal determinado con dos entradas;
-    ajustar hiperparámetros no lo va a arreglar.
+**`muestreo_ventanas.py`:** `seleccionar_indices`, `indices_inicio_validos`,
+`indices_inicio_validos_ventana`, `construir_ventana`,
+`construir_ventana_aleatoria`, `construir_ventanas_curva`.
 
-- **Ejemplos visuales de solapamiento.** A partir de las discrepancias
-  encontradas en el cálculo anterior, dibuja las parejas de curvas con Vmp
-  más distintos que comparten un punto (V, I) casi idéntico, superpuestas
-  con su Vmp real marcado, para ilustrar visualmente la indeterminación.
+**`lectura_escritura.py`:** `leer_datos_entrenamiento` (con los auxiliares
+`_leer_fichero_simulaciones`, `_construir_ejemplos_curva`, `_construir_info` y
+`_buscar_clave`), `dividir_datos`, `exportar_tflite`
+(con `_configurar_cuantizacion`), `cargar_modelo_tflite`, `guardar_resumen`.
 
-## Módulo `lectura_escritura.py`: funciones
+**`funciones_modelo.py`:** `crear_modelo`, `entrenar_modelo`, `predecir`,
+`predecir_tflite` (aplica los factores de cuantización si el modelo está
+cuantizado), `evaluar`, `predecir_vmp_curva`.
 
-- `_buscar_clave(diccionario, patron)` — busca la primera clave que
-  contiene `patron` (sin distinguir mayúsculas ni tildes exactas), porque
-  las claves del JSON incluyen unidades (`"Vmp [V]"`, `"Índice MPP"`).
-- `_indices_muestreo(n_disponibles, n_puntos, modo, rng)` — decide qué
-  índices de una curva se usan como muestras (todos, reparto uniforme, o
-  aleatorio sin reemplazo).
-- `leer_datos_entrenamiento(...)` — lee el JSON y construye `X`, `y`,
-  `grupos`, `info` como se describe arriba.
-- `dividir_datos(...)` — separa train/val/test por curva completa.
-- `exportar_tflite(...)` — convierte y guarda el modelo en `.tflite`.
-- `_configurar_cuantizacion(...)` — aplica las opciones de cuantización al
-  convertidor.
-- `cargar_modelo_tflite(...)` — carga un `.tflite` y reserva sus tensores.
-- `guardar_resumen(...)` — guarda un diccionario como JSON de resumen.
+**`diagnostico_datos.py`:** `cargar_configuracion_modelo`, `evaluar_modelo`,
+`figura_evaluacion`, `figura_curvas_ejemplo`, `main`.
 
-## Módulo `funciones_modelo.py`: funciones
+**`comparador_rn.py`:** `diagnosticar_modelo`, `imprimir_tabla_comparativa`,
+`figura_comparacion_metricas`, `figura_comparacion_distribucion`, `main`.
 
-- `crear_modelo(...)` — construye y compila la red (arquitectura descrita
-  arriba).
-- `entrenar_modelo(...)` — entrena con `EarlyStopping` y
-  `ReduceLROnPlateau` opcionales.
-- `predecir(...)` — predicción con el modelo Keras.
-- `predecir_tflite(...)` — predicción con un intérprete `.tflite` ya
-  cargado; aplica automáticamente los factores de cuantización si el
-  modelo está cuantizado.
-- `evaluar(...)` — calcula MAE, RMSE, MAPE, error máximo y R² entre
-  predicción y valor real.
-- `predecir_vmp_curva(...)` — agrega las predicciones de todos los puntos
-  de una curva completa (mediana o media) para obtener una estimación más
-  estable que con un único punto.
+**`rn_main.py`:** `graficar_entrenamiento`, `graficar_curva_ejemplo`, `main`.
+
+Cada función lleva un docstring breve con su propósito, entrada, salida y
+variables globales que lee o modifica.
 
 ## Parámetros principales (`rn_main.py`)
 
-Todos los parámetros de uso están agrupados al principio del fichero, en
-mayúsculas, agrupados por bloque (datos, partición, arquitectura,
-entrenamiento, salida, visualización). Los más relevantes:
+Todos los parámetros de uso están al principio del fichero, en mayúsculas y
+agrupados por bloque:
 
-- `RUTA_DATOS`: fichero de simulaciones a usar.
-- `N_PUNTOS_CURVA`: puntos tomados de cada curva para entrenar; `None`
-  usa todos los disponibles (más lento pero aprovecha toda la curva).
-- `N_CAPAS` / `N_NEURONAS` / `ACTIVACION`: tamaño y activación de la red.
-- `EPOCAS` / `PACIENCIA`: entrenamiento máximo y parada temprana
-  (`PACIENCIA=0` la desactiva).
-- `CUANTIZAR`: exporta el `.tflite` cuantizado a enteros en vez de
-  float32 (más pequeño y rápido en el microcontrolador, algo menos preciso).
-- `ID_MODELO`: nombre base de los ficheros generados en `modelos/`.
+- **Datos:** `DIR_DATOS`, `IDS_DATOS` (varios ids = se combinan en un único
+  dataset), `MODO_MUESTREO`, `DESCARTAR_I_NEGATIVA` (elimina la cola posterior
+  a Voc).
+- **Ventana:** `N_MUESTRAS`, `DELTA_V`, `ASCENDENTE`, `N_VENTANAS_CURVA`,
+  `PASO_FIJO`, `VENTANA`.
+- **Partición:** `FRACCION_TEST`, `FRACCION_VALIDACION` (fracciones de
+  curvas), `SEMILLA`.
+- **Arquitectura:** `N_CAPAS`, `N_NEURONAS`, `ACTIVACION`, `OPTIMIZADOR`
+  (`nadam`, `adam`, `rmsprop`, `sgd`, `adamw`), `LEARNING_RATE`,
+  `FUNCION_PERDIDA`. `N_ENTRADAS = 2 * N_MUESTRAS`.
+- **Entrenamiento:** `EPOCAS`, `BATCH_SIZE`, `PACIENCIA`, `REDUCIR_LR`,
+  `VERBOSE_ENTRENAMIENTO`.
+- **Estimación por curva:** `AGREGACION_CURVA` (`'mediana'` | `'media'`).
+- **Salida:** `ID` (crea o reescribe `modelos/mpp_v{ID}/`), `DIR_MODELOS`,
+  `CUANTIZAR`, `VERIFICAR_TFLITE`, `GUARDAR_RESUMEN`.
+- **Visualización:** `VISUALIZAR`, `MOSTRAR_FIGURAS`, `GUARDAR_FIGURAS`,
+  `DIR_FIGURAS`, `ESCALA_LOG_PERDIDA`.
 
 ## Requisitos
 
-Python 3.10+, TensorFlow (Keras), NumPy, Matplotlib. El intérprete de
-TFLite se toma del paquete `ai_edge_litert` si está instalado, o de
-`tf.lite` como alternativa.
+Python 3.10+, TensorFlow (Keras), NumPy, Matplotlib. El intérprete de TFLite se
+toma del paquete `ai_edge_litert` si está instalado, o de `tf.lite` como
+alternativa.
 
 ## Ejecución
 
 ```bash
-python rn_main.py              # entrena y exporta modelos/mpp_v1.tflite
-python diagnostico_datos.py    # diagnóstico previo sobre sim_1.dat
-python diagnostico_datos.py otro_fichero.dat
+python rn_main.py                  # entrena y exporta modelos/mpp_v{ID}/
+python diagnostico_datos.py 4      # evalúa el modelo ID=4 sobre su test
+python comparador_rn.py 1 2 3      # compara los modelos 1, 2 y 3
 ```
